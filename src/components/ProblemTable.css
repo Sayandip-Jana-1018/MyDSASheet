@@ -1,0 +1,94 @@
+/* ═══ PROBLEM TABLE — Compact ═══ */
+.table-wrap { overflow-x: auto; }
+
+.prob-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.prob-table th {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.prob-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.prob-table tbody tr:hover td { background: var(--bg-hover); }
+
+.prob-table tr.solved td { opacity: 0.3; }
+.prob-table tr.solved .prob-link { text-decoration: line-through; }
+
+.center { text-align: center; }
+
+/* Checkbox */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); border: 0;
+}
+
+.checkbox-wrap { display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+.custom-check {
+  width: 16px; height: 16px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.custom-check:hover { border-color: var(--text-tertiary); }
+
+.custom-check.checked {
+  background: var(--check-bg);
+  border-color: var(--check-bg);
+  animation: checkPop 200ms ease;
+}
+
+.check-icon { color: var(--check-fg); font-size: 10px; font-weight: 800; }
+
+/* Link */
+.prob-link { color: var(--text-primary); font-weight: 500; }
+.prob-link:hover { opacity: 0.6; text-decoration: underline; }
+
+/* Badge */
+.badge {
+  font-size: 9px; font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+}
+
+.badge-easy { background: var(--easy-bg); color: var(--easy-text); }
+.badge-medium { background: var(--med-bg); color: var(--med-text); }
+.badge-hard { background: var(--hard-bg); color: var(--hard-text); }
+
+.pattern-cell {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 16px !important;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .prob-table { font-size: 12px; }
+  .pattern-cell { display: none; }
+}
