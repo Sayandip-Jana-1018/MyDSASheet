@@ -1,72 +1,65 @@
+import { motion } from 'framer-motion'
+import { Check, ExternalLink } from 'lucide-react'
 import './ProblemTable.css'
 
-const DIFF_CLASSES = {
-  Easy: 'badge-easy',
-  Medium: 'badge-medium',
-  Hard: 'badge-hard',
+const difficultyClasses = {
+  Easy: 'easy',
+  Medium: 'medium',
+  Hard: 'hard',
 }
 
-export default function ProblemTable({ problems, filter, search, isProblemChecked, toggleProblem }) {
-  const filtered = problems.filter(p => {
-    if (filter === 'Easy' || filter === 'Medium' || filter === 'Hard') {
-      if (p.difficulty !== filter) return false
-    } else if (filter === 'unsolved') {
-      if (isProblemChecked(p.id)) return false
-    }
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
-    return true
-  })
-
+export default function ProblemTable({ problems, isProblemChecked, toggleProblem }) {
   return (
-    <div className="table-wrap">
-      <table className="prob-table">
-        <thead>
-          <tr>
-            <th style={{ width: '60px' }}>Status</th>
-            <th>Problem</th>
-            <th style={{ width: '100px' }} className="center">Difficulty</th>
-            <th>Pattern</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map(p => {
-            const checked = isProblemChecked(p.id)
-            return (
-              <tr key={p.id} className={checked ? 'solved' : ''}>
-                <td>
-                  <label className="checkbox-wrap">
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={checked}
-                      onChange={() => toggleProblem(p.id)}
-                    />
-                    <span className={`custom-check ${checked ? 'checked' : ''}`}>
-                      {checked && <span className="check-icon">✓</span>}
-                    </span>
-                  </label>
-                </td>
-                <td>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="prob-link">
-                    {p.name}
-                  </a>
-                </td>
-                <td className="center">
-                  <span className={`badge ${DIFF_CLASSES[p.difficulty] || ''}`}>
-                    {p.difficulty}
-                  </span>
-                </td>
-                <td className="pattern-cell">{p.pattern}</td>
-              </tr>
-            )
-          })}
-          {filtered.length === 0 && (
-            <tr>
-              <td colSpan="4" className="empty-row">No problems match the current filter</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <div className="problems-surface">
+      <div className="problem-head">
+        <span>Status</span>
+        <span>Problem</span>
+        <span>Difficulty</span>
+        <span>Pattern</span>
+      </div>
+
+      <div className="problem-list">
+        {problems.map((problem, index) => {
+          const checked = isProblemChecked(problem.id)
+
+          return (
+            <motion.div
+              className={`problem-row ${checked ? 'is-solved' : ''}`}
+              key={problem.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18, delay: Math.min(index * 0.012, 0.12) }}
+            >
+              <label className="status-check">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleProblem(problem.id)}
+                />
+                <span>{checked && <Check size={13} />}</span>
+              </label>
+
+              <a href={problem.url} target="_blank" rel="noopener noreferrer" className="problem-title">
+                <span>{problem.name}</span>
+                <ExternalLink size={14} />
+              </a>
+
+              <span className={`difficulty-chip ${difficultyClasses[problem.difficulty] || ''}`}>
+                {problem.difficulty}
+              </span>
+
+              <span className="pattern-label">{problem.pattern}</span>
+            </motion.div>
+          )
+        })}
+
+        {problems.length === 0 && (
+          <div className="empty-state">
+            <strong>No matching problems</strong>
+            <span>Try a different search term or filter.</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

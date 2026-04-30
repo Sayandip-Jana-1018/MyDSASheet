@@ -1,61 +1,87 @@
 import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { RotateCcw, Search, X } from 'lucide-react'
 import './FilterBar.css'
 
-export default function FilterBar({ onFilter, onSearch, onReset }) {
-  const [active, setActive] = useState('all')
+const filters = [
+  { key: 'all', label: 'All' },
+  { key: 'Easy', label: 'Easy' },
+  { key: 'Medium', label: 'Med' },
+  { key: 'Hard', label: 'Hard' },
+]
+
+export default function FilterBar({ filter, onFilter, search, onSearch, onReset }) {
   const [showResetModal, setShowResetModal] = useState(false)
-
-  const filters = [
-    { key: 'all', label: 'All' },
-    { key: 'Easy', label: 'Easy' },
-    { key: 'Medium', label: 'Med' },
-    { key: 'Hard', label: 'Hard' },
-    { key: 'unsolved', label: '○' },
-  ]
-
-  const handleFilter = (key) => {
-    setActive(key)
-    onFilter(key)
-  }
 
   return (
     <>
-      <div className="filter-bar">
-        <div className="search-wrapper">
-          <span className="search-icon">🔍</span>
+      <div className="filter-panel">
+        <label className="search-field">
+          <Search size={15} />
           <input
-            className="search-input"
-            type="text"
-            placeholder="Search…"
-            onChange={e => onSearch(e.target.value)}
+            type="search"
+            value={search}
+            placeholder="Search problems"
+            onChange={event => onSearch(event.target.value)}
           />
-        </div>
-        <div className="filter-pills">
-          {filters.map(f => (
+        </label>
+
+        <div className="filter-set" aria-label="Problem filters">
+          {filters.map(item => (
             <button
-              key={f.key}
-              className={`filter-btn ${active === f.key ? 'active' : ''}`}
-              onClick={() => handleFilter(f.key)}
+              key={item.key}
+              className={filter === item.key ? 'is-active' : ''}
+              onClick={() => onFilter(item.key)}
             >
-              {f.label}
+              {item.label}
             </button>
           ))}
         </div>
-        <button className="action-btn reset-btn" onClick={() => setShowResetModal(true)}>Reset</button>
+
+        <button className="reset-control" onClick={() => setShowResetModal(true)}>
+          <RotateCcw size={14} />
+          Reset progress
+        </button>
       </div>
 
-      {showResetModal && (
-        <div className="modal-overlay" onClick={() => setShowResetModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3 className="modal-title">Reset Progress?</h3>
-            <p className="modal-text">This will clear all your solved problems and tracker data. This cannot be undone.</p>
-            <div className="modal-actions">
-              <button className="modal-btn modal-cancel" onClick={() => setShowResetModal(false)}>Cancel</button>
-              <button className="modal-btn modal-confirm" onClick={() => { onReset(); setShowResetModal(false); }}>Reset</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showResetModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowResetModal(false)}
+          >
+            <motion.div
+              className="modal-content"
+              initial={{ scale: 0.96, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 10 }}
+              onClick={event => event.stopPropagation()}
+            >
+              <button className="modal-close" aria-label="Close reset dialog" onClick={() => setShowResetModal(false)}>
+                <X size={16} />
+              </button>
+              <p className="modal-eyebrow">Reset roadmap</p>
+              <h3>Clear all saved progress?</h3>
+              <p>This removes solved problems and milestone checks from this browser. Your roadmap content stays the same.</p>
+              <div className="modal-actions">
+                <button className="secondary-action" onClick={() => setShowResetModal(false)}>Cancel</button>
+                <button
+                  className="danger-action"
+                  onClick={() => {
+                    onReset()
+                    setShowResetModal(false)
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

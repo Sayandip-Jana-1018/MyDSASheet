@@ -1,55 +1,58 @@
+import { Check, Circle, GraduationCap, ListChecks, RotateCcw, Target, Trophy } from 'lucide-react'
 import './TrackerBox.css'
 
 const TRACKER_ITEMS = [
-  { type: 'concept', label: 'Concept Revision', icon: '📖' },
-  { type: 'easy', label: 'Easy Problems Done', icon: '🟢' },
-  { type: 'medium', label: 'Medium Problems Done', icon: '🟡' },
-  { type: 'hard', label: 'Hard Problems Done', icon: '🔴' },
-  { type: 'revision', label: 'Revision Completed', icon: '✅' },
+  { type: 'concept', label: 'Concept revision', icon: GraduationCap },
+  { type: 'easy', label: 'Easy set complete', icon: Circle },
+  { type: 'medium', label: 'Medium set complete', icon: Target },
+  { type: 'hard', label: 'Hard set complete', icon: Trophy },
+  { type: 'revision', label: 'Final revision complete', icon: RotateCcw },
 ]
 
 export default function TrackerBox({ chapter, chapterStats, isTrackerChecked, toggleTracker }) {
   const { done, total } = chapterStats
-  const pct = total ? Math.round(done / total * 100) : 0
-  const checkedCount = TRACKER_ITEMS.filter(i => isTrackerChecked(chapter.id, i.type)).length
+  const pct = total ? Math.round((done / total) * 100) : 0
+  const checkedCount = TRACKER_ITEMS.filter(item => isTrackerChecked(chapter.id, item.type)).length
 
   return (
-    <div className="detail-box tracker-box">
-      <h3 className="detail-box-title">📊 Chapter Completion Tracker</h3>
+    <section className="tracker-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Milestones</p>
+          <h2>Chapter tracker</h2>
+        </div>
+        <span className="section-pill">{checkedCount}/5</span>
+      </div>
 
-      <div className="tracker-items">
+      <div className="tracker-stack">
         {TRACKER_ITEMS.map(item => {
           const checked = isTrackerChecked(chapter.id, item.type)
+          const Icon = item.icon
+
           return (
-            <label key={item.type} className={`tracker-row ${checked ? 'checked' : ''}`}>
+            <label key={item.type} className={`tracker-row ${checked ? 'is-checked' : ''}`}>
               <input
                 type="checkbox"
-                className="sr-only"
                 checked={checked}
                 onChange={() => toggleTracker(chapter.id, item.type)}
               />
-              <span className="tracker-icon">{item.icon}</span>
-              <span className="tracker-label">{item.label}</span>
-              <span className={`tracker-badge ${checked ? 'done' : ''}`}>
-                {checked ? '✓' : '—'}
-              </span>
+              <span className="tracker-icon"><Icon size={16} /></span>
+              <span>{item.label}</span>
+              <span className="tracker-state">{checked ? <Check size={14} /> : <ListChecks size={14} />}</span>
             </label>
           )
         })}
       </div>
 
-      <div className="tracker-footer">
-        <div className="tracker-progress-bar">
-          <div
-            className="tracker-progress-fill"
-            style={{ width: `${pct}%` }}
-          />
+      <div className="tracker-summary">
+        <div className="tracker-meter">
+          <span style={{ width: `${pct}%` }} />
         </div>
-        <div className="tracker-stats">
-          <span>{done} / {total} problems</span>
-          <span>{checkedCount}/5 milestones</span>
+        <div>
+          <span>{done}/{total} problems</span>
+          <span>{pct}% solved</span>
         </div>
       </div>
-    </div>
+    </section>
   )
 }
