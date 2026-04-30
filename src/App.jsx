@@ -7,6 +7,7 @@ import TopBar from './components/TopBar'
 import FilterBar from './components/FilterBar'
 import ChapterSidebar from './components/ChapterSidebar'
 import ChapterDetail from './components/ChapterDetail'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const views = ['overview', 'problems', 'tracker']
 
@@ -86,7 +87,8 @@ export default function App() {
       />
 
       <div className="app-shell">
-        <AnimatePresence>
+        <ErrorBoundary>
+          <AnimatePresence>
           {sidebarOpen && (
             <motion.aside
               className="chapter-rail"
@@ -151,6 +153,7 @@ export default function App() {
             />
           )}
         </main>
+        </ErrorBoundary>
       </div>
     </div>
   )

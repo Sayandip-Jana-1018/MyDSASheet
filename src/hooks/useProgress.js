@@ -16,11 +16,16 @@ export function useProgress() {
   const [tracker, setTracker] = useState(() => loadJSON('dsa-tracker', {}))
 
   const toggleProblem = useCallback((id) => {
-    setProblems(prev => {
-      const next = { ...prev, [id]: !prev[id] }
-      saveJSON('dsa-problems', next)
-      return next
-    })
+    try {
+      setProblems(prev => {
+        const next = { ...prev, [id]: !prev[id] }
+        saveJSON('dsa-problems', next)
+        return next
+      })
+    } catch (err) {
+      console.error('toggleProblem error:', err)
+      window.__DSA_LAST_ERROR = err
+    }
   }, [])
 
   const toggleTracker = useCallback((chId, type) => {
@@ -36,16 +41,22 @@ export function useProgress() {
   const isTrackerChecked = useCallback((chId, type) => !!tracker[`${chId}-${type}`], [tracker])
 
   const stats = useMemo(() => {
-    let totalSolved = 0
-    const chapterStats = {}
-    for (const ch of chapters) {
-      const chapterProblems = ch.problems || []
-      const done = chapterProblems.filter(p => problems[p.id]).length
-      totalSolved += done
-      chapterStats[ch.id] = { done, total: chapterProblems.length }
+    try {
+      let totalSolved = 0
+      const chapterStats = {}
+      for (const ch of chapters) {
+        const chapterProblems = ch.problems || []
+        const done = chapterProblems.filter(p => p && problems[p.id]).length
+        totalSolved += done
+        chapterStats[ch.id] = { done, total: chapterProblems.length }
+      }
+      const totalProblems = chapters.reduce((s, c) => s + (c.problems || []).length, 0)
+      return { totalSolved, totalProblems, chapterStats, pct: totalProblems ? Math.round(totalSolved / totalProblems * 100) : 0 }
+    } catch (err) {
+      console.error('stats computation error:', err)
+      window.__DSA_LAST_ERROR = err
+      return { totalSolved: 0, totalProblems: 0, chapterStats: {}, pct: 0 }
     }
-    const totalProblems = chapters.reduce((s, c) => s + (c.problems || []).length, 0)
-    return { totalSolved, totalProblems, chapterStats, pct: totalProblems ? Math.round(totalSolved / totalProblems * 100) : 0 }
   }, [problems])
 
   const resetAll = useCallback(() => {
