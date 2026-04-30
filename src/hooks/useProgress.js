@@ -39,11 +39,12 @@ export function useProgress() {
     let totalSolved = 0
     const chapterStats = {}
     for (const ch of chapters) {
-      const done = ch.problems.filter(p => problems[p.id]).length
+      const chapterProblems = ch.problems || []
+      const done = chapterProblems.filter(p => problems[p.id]).length
       totalSolved += done
-      chapterStats[ch.id] = { done, total: ch.problems.length }
+      chapterStats[ch.id] = { done, total: chapterProblems.length }
     }
-    const totalProblems = chapters.reduce((s, c) => s + c.problems.length, 0)
+    const totalProblems = chapters.reduce((s, c) => s + (c.problems || []).length, 0)
     return { totalSolved, totalProblems, chapterStats, pct: totalProblems ? Math.round(totalSolved / totalProblems * 100) : 0 }
   }, [problems])
 

@@ -23,10 +23,10 @@ export default function App() {
   const [activeView, setActiveView] = useState('overview')
 
   const activeData = chapters.find(c => c.id === activeChapter) || chapters[0]
-  const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: activeData?.problems.length || 0 }
+  const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length }
 
   const filteredProblems = useMemo(() => {
-    if (!activeData) return []
+    if (!activeData || !activeData.problems) return []
 
     return activeData.problems.filter(problem => {
       if (filter === 'Easy' || filter === 'Medium' || filter === 'Hard') {
@@ -58,7 +58,12 @@ export default function App() {
 
   const scrollToProblems = () => {
     window.setTimeout(() => {
-      document.querySelector('.problems-view')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const workspace = document.querySelector('.workspace')
+      const problemsView = document.querySelector('.problems-view')
+      if (workspace && problemsView) {
+        const top = problemsView.getBoundingClientRect().top + workspace.scrollTop - workspace.getBoundingClientRect().top - 20
+        workspace.scrollTo({ top, behavior: 'smooth' })
+      }
     }, 0)
   }
 
@@ -112,7 +117,7 @@ export default function App() {
                     key={chapter.id}
                     chapter={chapter}
                     isActive={activeData?.id === chapter.id}
-                    chapterStats={stats.chapterStats[chapter.id] || { done: 0, total: chapter.problems.length }}
+                    chapterStats={stats.chapterStats[chapter.id] || { done: 0, total: (chapter.problems || []).length }}
                     onClick={() => handleChapterSelect(chapter.id)}
                   />
                 ))}
