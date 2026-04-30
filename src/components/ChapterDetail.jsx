@@ -168,7 +168,7 @@ export default function ChapterDetail({
 }) {
   const { done, total } = chapterStats
   const pct = total ? Math.round((done / total) * 100) : 0
-  const nextProblem = chapter.problems.find(problem => !isProblemChecked(problem.id))
+  const nextProblem = (chapter.problems || []).find(problem => !isProblemChecked(problem.id))
   const playbook = getPlaybook(chapter)
   const reviewUnsolved = () => {
     onFilter('unsolved')

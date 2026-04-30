@@ -75,7 +75,7 @@ export default function ChapterCard({ chapter, chapterStats, filter, search, isP
               <span className="sub-prog">({done}/{total} solved)</span>
             </h3>
             <ProblemTable
-              problems={chapter.problems}
+              problems={chapter.problems || []}
               filter={filter}
               search={search}
               isProblemChecked={isProblemChecked}
