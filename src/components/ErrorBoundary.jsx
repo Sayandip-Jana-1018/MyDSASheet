@@ -13,10 +13,6 @@ export class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('[ErrorBoundary] Caught:', error, errorInfo);
     this.setState({ errorInfo });
-    // Use alert as a nuclear option to make sure we see the error
-    try {
-      window.alert('React Error: ' + (error?.message || error));
-    } catch { /* noop */ }
   }
 
   render() {

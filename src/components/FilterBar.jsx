@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { RotateCcw, Search, X } from 'lucide-react'
 import './FilterBar.css'
 
@@ -8,6 +7,7 @@ const filters = [
   { key: 'Easy', label: 'Easy' },
   { key: 'Medium', label: 'Med' },
   { key: 'Hard', label: 'Hard' },
+  { key: 'bookmarked', label: '🔖 Saved' },
 ]
 
 export default function FilterBar({ filter, onFilter, search, onSearch, onReset }) {
@@ -44,44 +44,35 @@ export default function FilterBar({ filter, onFilter, search, onSearch, onReset 
         </button>
       </div>
 
-      <AnimatePresence>
-        {showResetModal && (
-          <motion.div
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowResetModal(false)}
-          >
-            <motion.div
-              className="modal-content"
-              initial={{ scale: 0.96, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.96, y: 10 }}
-              onClick={event => event.stopPropagation()}
+      {/* CSS-only animated modal — no framer-motion */}
+      <div
+        className={`modal-overlay ${showResetModal ? 'is-visible' : ''}`}
+        onClick={() => setShowResetModal(false)}
+      >
+        <div
+          className={`modal-content ${showResetModal ? 'is-visible' : ''}`}
+          onClick={event => event.stopPropagation()}
+        >
+          <button className="modal-close" aria-label="Close reset dialog" onClick={() => setShowResetModal(false)}>
+            <X size={16} />
+          </button>
+          <p className="modal-eyebrow">Reset roadmap</p>
+          <h3>Clear all saved progress?</h3>
+          <p>This removes solved problems, bookmarks, notes, and milestone checks from this browser and cloud. Your roadmap content stays the same.</p>
+          <div className="modal-actions">
+            <button className="secondary-action" onClick={() => setShowResetModal(false)}>Cancel</button>
+            <button
+              className="danger-action"
+              onClick={() => {
+                onReset()
+                setShowResetModal(false)
+              }}
             >
-              <button className="modal-close" aria-label="Close reset dialog" onClick={() => setShowResetModal(false)}>
-                <X size={16} />
-              </button>
-              <p className="modal-eyebrow">Reset roadmap</p>
-              <h3>Clear all saved progress?</h3>
-              <p>This removes solved problems and milestone checks from this browser. Your roadmap content stays the same.</p>
-              <div className="modal-actions">
-                <button className="secondary-action" onClick={() => setShowResetModal(false)}>Cancel</button>
-                <button
-                  className="danger-action"
-                  onClick={() => {
-                    onReset()
-                    setShowResetModal(false)
-                  }}
-                >
-                  Reset
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
     </>
   )
 }

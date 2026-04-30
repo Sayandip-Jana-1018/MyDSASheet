@@ -1,5 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useMemo, useRef, useState, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { chapters } from './data/chapters'
 import { useProgress } from './hooks/useProgress'
@@ -7,12 +6,20 @@ import TopBar from './components/TopBar'
 import FilterBar from './components/FilterBar'
 import ChapterSidebar from './components/ChapterSidebar'
 import ChapterDetail from './components/ChapterDetail'
-import { ErrorBoundary } from './components/ErrorBoundary'
+import CommunityLeaderboard from './components/CommunityLeaderboard'
 
 const views = ['overview', 'problems', 'tracker']
 
 export default function App() {
-  const { isProblemChecked, toggleProblem, isTrackerChecked, toggleTracker, stats, resetAll } = useProgress()
+  const {
+    isProblemChecked, toggleProblem,
+    isTrackerChecked, toggleTracker,
+    isBookmarked, toggleBookmark,
+    getNote, setNote,
+    stats, resetAll,
+    userId, username, setUsername,
+  } = useProgress()
+
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [activeChapter, setActiveChapter] = useState(chapters[0]?.id || null)
@@ -22,6 +29,15 @@ export default function App() {
     return window.innerWidth > 860
   })
   const [activeView, setActiveView] = useState('overview')
+  const [showCommunity, setShowCommunity] = useState(false)
+
+  // Check if a friend's link was shared
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('friend')) {
+      setShowCommunity(true)
+    }
+  }, [])
 
   const activeData = chapters.find(c => c.id === activeChapter) || chapters[0]
   const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length }
@@ -34,6 +50,8 @@ export default function App() {
         if (problem.difficulty !== filter) return false
       } else if (filter === 'unsolved' && isProblemChecked(problem.id)) {
         return false
+      } else if (filter === 'bookmarked' && !isBookmarked(problem.id)) {
+        return false
       }
 
       if (search.trim() && !problem.name.toLowerCase().includes(search.trim().toLowerCase())) {
@@ -42,11 +60,12 @@ export default function App() {
 
       return true
     })
-  }, [activeData, filter, search, isProblemChecked])
+  }, [activeData, filter, search, isProblemChecked, isBookmarked])
 
   const handleChapterSelect = chapterId => {
     setActiveChapter(chapterId)
     setActiveView('overview')
+    setShowCommunity(false)
 
     if (window.innerWidth <= 860) {
       setSidebarOpen(false)
@@ -78,64 +97,65 @@ export default function App() {
     chapterListRef.current?.scrollBy({ top: 260, behavior: 'smooth' })
   }
 
+
   return (
     <div className="app" style={{ '--chapter-color': activeData?.color || '#315cf6' }}>
       <TopBar
         stats={stats}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(open => !open)}
+        onToggleCommunity={() => setShowCommunity(!showCommunity)}
+        isCommunityView={showCommunity}
       />
 
       <div className="app-shell">
-        <ErrorBoundary>
-          <AnimatePresence>
-          {sidebarOpen && (
-            <motion.aside
-              className="chapter-rail"
-              initial={{ x: -24, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -24, opacity: 0 }}
-              transition={{ duration: 0.22, ease: 'easeOut' }}
-            >
-              <div className="rail-head">
-                <div>
-                  <p className="eyebrow">Curriculum</p>
-                  <h2>22 chapters</h2>
-                </div>
-                <span className="rail-count">{stats.totalSolved}/{stats.totalProblems}</span>
+        {sidebarOpen && (
+          <aside className="chapter-rail">
+            <div className="rail-head">
+              <div>
+                <p className="eyebrow">Curriculum</p>
+                <h2>22 chapters</h2>
               </div>
+              <span className="rail-count">{stats.totalSolved}/{stats.totalProblems}</span>
+            </div>
 
-              <FilterBar
-                filter={filter}
-                onFilter={handleFilterChange}
-                search={search}
-                onSearch={setSearch}
-                onReset={resetAll}
-              />
+            <FilterBar
+              filter={filter}
+              onFilter={handleFilterChange}
+              search={search}
+              onSearch={setSearch}
+              onReset={resetAll}
+            />
 
-              <div className="chapter-list" aria-label="Chapters" ref={chapterListRef}>
-                {chapters.map(chapter => (
-                  <ChapterSidebar
-                    key={chapter.id}
-                    chapter={chapter}
-                    isActive={activeData?.id === chapter.id}
-                    chapterStats={stats.chapterStats[chapter.id] || { done: 0, total: (chapter.problems || []).length }}
-                    onClick={() => handleChapterSelect(chapter.id)}
-                  />
-                ))}
-              </div>
+            <div className="chapter-list" aria-label="Chapters" ref={chapterListRef}>
+              {chapters.map(chapter => (
+                <ChapterSidebar
+                  key={chapter.id}
+                  chapter={chapter}
+                  isActive={activeData?.id === chapter.id}
+                  chapterStats={stats.chapterStats[chapter.id] || { done: 0, total: (chapter.problems || []).length }}
+                  onClick={() => handleChapterSelect(chapter.id)}
+                />
+              ))}
+            </div>
 
-              <button className="rail-scroll-cue" type="button" onClick={scrollChapterList} aria-label="Scroll chapters">
-                <ChevronDown size={20} />
-              </button>
-            </motion.aside>
-          )}
-        </AnimatePresence>
+            <button className="rail-scroll-cue" type="button" onClick={scrollChapterList} aria-label="Scroll chapters">
+              <ChevronDown size={20} />
+            </button>
+          </aside>
+        )}
 
         {sidebarOpen && <button className="drawer-scrim" aria-label="Close chapters" onClick={() => setSidebarOpen(false)} />}
 
         <main className="workspace">
-          {activeData && (
+          {showCommunity ? (
+            <CommunityLeaderboard
+              currentUserId={userId}
+              currentUsername={username}
+              setUsername={setUsername}
+              stats={stats}
+            />
+          ) : activeData ? (
             <ChapterDetail
               key={activeData.id}
               chapter={activeData}
@@ -150,10 +170,13 @@ export default function App() {
               toggleProblem={toggleProblem}
               isTrackerChecked={isTrackerChecked}
               toggleTracker={toggleTracker}
+              isBookmarked={isBookmarked}
+              toggleBookmark={toggleBookmark}
+              getNote={getNote}
+              setNote={setNote}
             />
-          )}
+          ) : null}
         </main>
-        </ErrorBoundary>
       </div>
     </div>
   )

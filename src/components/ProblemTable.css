@@ -56,6 +56,22 @@
   text-decoration: line-through;
 }
 
+/* Bookmark highlight */
+.problem-row.is-bookmarked {
+  background: color-mix(in srgb, #f59e0b 6%, transparent);
+  border-left: 3px solid #f59e0b;
+  padding-left: 11px;
+}
+
+html[data-theme="dark"] .problem-row.is-bookmarked {
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+  border-left-color: #fbbf24;
+}
+
+.problem-row.is-bookmarked.is-solved {
+  opacity: 0.72;
+}
+
 .status-check {
   width: 34px;
   height: 34px;
@@ -90,6 +106,14 @@
   transform: scale(1.04);
 }
 
+/* Problem name + actions container */
+.problem-name-area {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .problem-title {
   min-width: 0;
   display: inline-flex;
@@ -97,6 +121,7 @@
   gap: 8px;
   color: var(--text-primary);
   font-weight: 750;
+  flex: 1;
 }
 
 .problem-title span {
@@ -108,6 +133,147 @@
 .problem-title svg {
   flex: 0 0 auto;
   color: var(--text-muted);
+}
+
+/* Action icons (bookmark, note) */
+.problem-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.action-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms, color 150ms, background 150ms;
+  position: relative;
+}
+
+.problem-row:hover .action-icon {
+  opacity: 0.6;
+}
+
+.problem-row:hover .action-icon:hover {
+  opacity: 1;
+  background: var(--bg-muted);
+}
+
+/* Always show if active */
+.action-icon.is-active,
+.action-icon.has-content,
+.bookmark-icon.is-active {
+  opacity: 1;
+}
+
+.bookmark-icon.is-active {
+  color: #f59e0b;
+}
+
+html[data-theme="dark"] .bookmark-icon.is-active {
+  color: #fbbf24;
+}
+
+.note-icon.has-content {
+  color: var(--accent);
+}
+
+.note-icon.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Note badge */
+.note-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* Note row */
+.note-row {
+  padding: 0 14px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 3%, var(--bg-subtle));
+}
+
+.note-area {
+  margin-left: 76px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+.note-input {
+  width: 100%;
+  min-height: 72px;
+  padding: 12px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.note-input::placeholder {
+  color: var(--text-muted);
+}
+
+.note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.note-chars {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.note-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.note-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-muted);
 }
 
 .difficulty-chip {
@@ -173,8 +339,16 @@
     padding: 14px;
   }
 
+  .problem-row.is-bookmarked {
+    padding-left: 11px;
+  }
+
   .status-check {
     grid-row: span 3;
+  }
+
+  .problem-name-area {
+    flex-wrap: wrap;
   }
 
   .problem-title {
@@ -186,6 +360,11 @@
     white-space: normal;
   }
 
+  /* Always show action icons on mobile */
+  .action-icon {
+    opacity: 0.7;
+  }
+
   .difficulty-chip,
   .pattern-label {
     grid-column: 2;
@@ -194,5 +373,13 @@
   .pattern-label {
     white-space: normal;
     line-height: 1.35;
+  }
+
+  .note-area {
+    margin-left: 0;
+  }
+
+  .note-row {
+    padding: 0 14px 12px;
   }
 }

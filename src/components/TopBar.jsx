@@ -1,8 +1,8 @@
-import { BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sparkles, Sun, Trophy } from 'lucide-react'
+import { BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sparkles, Sun, Trophy, Users } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import './TopBar.css'
 
-export default function TopBar({ stats, sidebarOpen, onToggleSidebar }) {
+export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCommunity, isCommunityView }) {
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -57,9 +57,19 @@ export default function TopBar({ stats, sidebarOpen, onToggleSidebar }) {
           </div>
         </div>
 
-        <button className="icon-btn theme-btn" onClick={toggleTheme} aria-label="Toggle theme">
-          {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-        </button>
+        <div className="topbar-actions">
+          <button 
+            className={`icon-btn ${isCommunityView ? 'is-active' : ''}`} 
+            onClick={onToggleCommunity} 
+            aria-label="Community Leaderboard"
+            title="Community Leaderboard"
+          >
+            <Users size={17} />
+          </button>
+          <button className="icon-btn theme-btn" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
+        </div>
       </div>
     </header>
   )

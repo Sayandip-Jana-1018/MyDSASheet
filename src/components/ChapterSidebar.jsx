@@ -1,18 +1,15 @@
-import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import './ChapterSidebar.css'
 
 export default function ChapterSidebar({ chapter, isActive, chapterStats, onClick }) {
-  const { done, total } = chapterStats
+  const { done, total } = chapterStats || { done: 0, total: 0 }
   const pct = total ? Math.round((done / total) * 100) : 0
 
   return (
-    <motion.button
+    <button
       type="button"
       className={`chapter-item ${isActive ? 'is-active' : ''}`}
       onClick={onClick}
-      whileHover={{ x: 2 }}
-      whileTap={{ scale: 0.99 }}
       style={{ '--chapter-color': chapter.color }}
     >
       <span className="chapter-index">{chapter.num}</span>
@@ -25,6 +22,6 @@ export default function ChapterSidebar({ chapter, isActive, chapterStats, onClic
         </span>
       </span>
       <ChevronRight className="chapter-arrow" size={16} />
-    </motion.button>
+    </button>
   )
 }

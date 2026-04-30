@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { BookOpen, CheckCircle2, Compass, ExternalLink, Layers3, Lightbulb, ListChecks, Route, ShieldAlert, Target, Zap } from 'lucide-react'
 import ProblemTable from './ProblemTable'
 import TrackerBox from './TrackerBox'
@@ -165,22 +164,24 @@ export default function ChapterDetail({
   toggleProblem,
   isTrackerChecked,
   toggleTracker,
+  isBookmarked,
+  toggleBookmark,
+  getNote,
+  setNote,
 }) {
   const { done, total } = chapterStats
   const pct = total ? Math.round((done / total) * 100) : 0
   const nextProblem = (chapter.problems || []).find(problem => !isProblemChecked(problem.id))
   const playbook = getPlaybook(chapter)
+
   const reviewUnsolved = () => {
     onFilter('unsolved')
   }
 
   return (
-    <motion.div
+    <div
       className="chapter-detail"
       style={{ '--chapter-color': chapter.color, '--chapter-progress': `${pct}%` }}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, ease: 'easeOut' }}
     >
       <header className="chapter-hero">
         <div className="hero-copy">
@@ -286,6 +287,10 @@ export default function ChapterDetail({
                 problems={filteredProblems}
                 isProblemChecked={isProblemChecked}
                 toggleProblem={toggleProblem}
+                isBookmarked={isBookmarked}
+                toggleBookmark={toggleBookmark}
+                getNote={getNote}
+                setNote={setNote}
               />
             </Section>
           </div>
@@ -314,6 +319,6 @@ export default function ChapterDetail({
           <PlaybookPanel chapter={chapter} playbook={playbook} />
         </aside>
       </div>
-    </motion.div>
+    </div>
   )
 }
