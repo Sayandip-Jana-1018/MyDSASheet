@@ -34,7 +34,7 @@ export default function App() {
     getNote, setNote,
     stats, resetAll, syncNow,
     userId, username, setUsername,
-    profile, claimProfile, connectWithCode, setLeaderboardOptIn, uploadAvatar,
+    profile, claimProfile, connectWithCode, findProfilesByName, setLeaderboardOptIn, uploadAvatar,
     dismissOnboarding, startFreshLocal,
   } = useProgress()
 
@@ -73,8 +73,9 @@ export default function App() {
   }, [connectWithCode])
 
   useEffect(() => {
-    if (!profile.claimed && !profile.dismissedOnboarding) {
+    if (!profile.claimed && !profile.dismissedOnboarding && !localStorage.getItem('dsa-profile-prompted')) {
       const timer = window.setTimeout(() => {
+        localStorage.setItem('dsa-profile-prompted', 'true')
         setProfileModalMode('welcome')
         setProfileModalOpen(true)
       }, 700)
@@ -82,6 +83,12 @@ export default function App() {
     }
     return undefined
   }, [profile.claimed, profile.dismissedOnboarding])
+
+  useEffect(() => {
+    if (profile.claimed && profile.syncCode) {
+      syncNow()
+    }
+  }, [profile.claimed, profile.syncCode, syncNow])
 
   const activeData = chapters.find(c => c.id === activeChapter) || chapters[0]
   const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length }
@@ -266,9 +273,13 @@ export default function App() {
         initialMode={profileModalMode}
         profile={profile}
         stats={stats}
-        onClose={() => setProfileModalOpen(false)}
+        onClose={() => {
+          if (!profile.claimed) dismissOnboarding()
+          setProfileModalOpen(false)
+        }}
         onClaim={claimProfile}
         onConnect={connectWithCode}
+        onFindProfiles={findProfilesByName}
         onRename={setUsername}
         onOptInChange={setLeaderboardOptIn}
         onUploadAvatar={uploadAvatar}

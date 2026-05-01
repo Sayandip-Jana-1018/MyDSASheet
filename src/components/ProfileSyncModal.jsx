@@ -51,6 +51,7 @@ export default function ProfileSyncModal({
   onClose,
   onClaim,
   onConnect,
+  onFindProfiles,
   onRename,
   onOptInChange,
   onUploadAvatar,
@@ -63,6 +64,8 @@ export default function ProfileSyncModal({
   const [busy, setBusy] = useState(false)
   const [avatarBusy, setAvatarBusy] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [profileMatches, setProfileMatches] = useState([])
+  const [profileLookupBusy, setProfileLookupBusy] = useState(false)
 
   const syncLink = useMemo(() => buildSyncLink(profile?.syncCode), [profile?.syncCode])
 
@@ -71,8 +74,25 @@ export default function ProfileSyncModal({
       setMode(profile?.claimed && initialMode === 'welcome' ? 'manage' : initialMode)
       setName(profile?.username && profile.username !== 'Private pilot' ? profile.username : '')
       setFeedback('')
+      setProfileMatches([])
     }
   }, [open, initialMode, profile?.claimed, profile?.username])
+
+  useEffect(() => {
+    if (!open || mode !== 'claim' || !name.trim() || !onFindProfiles) {
+      setProfileMatches([])
+      return undefined
+    }
+
+    const timer = window.setTimeout(async () => {
+      setProfileLookupBusy(true)
+      const result = await onFindProfiles(name)
+      setProfileLookupBusy(false)
+      setProfileMatches(result?.profiles || [])
+    }, 350)
+
+    return () => window.clearTimeout(timer)
+  }, [mode, name, onFindProfiles, open])
 
   if (!open) return null
 
@@ -109,6 +129,13 @@ export default function ProfileSyncModal({
     } else {
       setFeedback('That sync code was not found.')
     }
+  }
+
+  const chooseExistingProfile = (match) => {
+    setName(match?.username || name)
+    setCode('')
+    setMode('connect')
+    setFeedback('Paste that profile sync code to connect safely.')
   }
 
   const rename = async () => {
@@ -210,16 +237,44 @@ export default function ProfileSyncModal({
             </label>
 
             {!profile?.claimed ? (
-              <div className="profile-actions-row">
-                <button className="profile-primary" type="button" disabled={busy} onClick={() => claim(true)}>
-                  <Share2 size={16} />
-                  Join leaderboard
-                </button>
-                <button className="profile-secondary" type="button" disabled={busy} onClick={() => claim(false)}>
-                  <Lock size={16} />
-                  Private sync
-                </button>
-              </div>
+              <>
+                {(profileLookupBusy || profileMatches.length > 0) && (
+                  <div className="profile-match-panel">
+                    <span className="sync-label">Existing public profiles</span>
+                    {profileLookupBusy ? (
+                      <p>Checking leaderboard profiles...</p>
+                    ) : (
+                      profileMatches.map(match => (
+                        <button key={match.id} type="button" onClick={() => chooseExistingProfile(match)}>
+                          <span className="match-avatar">
+                            {match.avatar_url ? (
+                              <img src={match.avatar_url} alt={`${match.username || 'Profile'} avatar`} />
+                            ) : (
+                              <span>{(match.username || 'P').charAt(0).toUpperCase()}</span>
+                            )}
+                          </span>
+                          <span>
+                            <strong>{match.username}</strong>
+                            <em>{match.total_solved || 0} solved</em>
+                          </span>
+                          <small>Enter</small>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                <div className="profile-actions-row">
+                  <button className="profile-primary" type="button" disabled={busy} onClick={() => claim(true)}>
+                    <Share2 size={16} />
+                    Create profile
+                  </button>
+                  <button className="profile-secondary" type="button" disabled={busy} onClick={() => claim(false)}>
+                    <Lock size={16} />
+                    Private sync
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <div className="avatar-panel">

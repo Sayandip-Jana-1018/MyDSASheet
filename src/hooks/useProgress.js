@@ -22,6 +22,10 @@ function saveText(key, val) {
   try { localStorage.setItem(key, val) } catch { /* ignore */ }
 }
 
+function removeText(key) {
+  try { localStorage.removeItem(key) } catch { /* ignore */ }
+}
+
 function normalizeMap(value, valueGuard = Boolean) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
 
@@ -146,7 +150,11 @@ export function useProgress() {
     }
     saveJSON(PROFILE_KEY, normalized)
     saveText(LEGACY_ID_KEY, normalized.id)
-    if (normalized.username) saveText(LEGACY_NAME_KEY, normalized.username)
+    if (normalized.username) {
+      saveText(LEGACY_NAME_KEY, normalized.username)
+    } else {
+      removeText(LEGACY_NAME_KEY)
+    }
     setProfileState(normalized)
     return normalized
   }, [])
@@ -406,6 +414,26 @@ export function useProgress() {
     }
   }, [persistProfile])
 
+  const findProfilesByName = useCallback(async (name) => {
+    const displayName = cleanName(name)
+    if (!displayName || !supabase) return { ok: true, profiles: [] }
+
+    try {
+      const { data, error } = await supabase
+        .from('community_profiles')
+        .select('id, username, total_solved, avatar_url, last_active')
+        .eq('leaderboard_opt_in', true)
+        .ilike('username', `%${displayName}%`)
+        .order('last_active', { ascending: false })
+        .limit(5)
+
+      if (error) throw error
+      return { ok: true, profiles: data || [] }
+    } catch (err) {
+      return { ok: false, profiles: [], error: err }
+    }
+  }, [])
+
   const updateProfileName = useCallback(async (name) => {
     const displayName = cleanName(name)
     if (!displayName) return { ok: false }
@@ -539,6 +567,7 @@ export function useProgress() {
     syncStatus,
     claimProfile,
     connectWithCode,
+    findProfilesByName,
     updateProfileName,
     setLeaderboardOptIn,
     uploadAvatar,
