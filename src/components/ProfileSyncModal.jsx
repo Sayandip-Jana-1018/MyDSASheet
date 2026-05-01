@@ -37,21 +37,10 @@ async function createAvatarDataUrl(file) {
   canvas.height = 512
   const ctx = canvas.getContext('2d')
   ctx.imageSmoothingQuality = 'high'
-
-  const scale = Math.min(canvas.width / image.width, canvas.height / image.height)
-  const width = image.width * scale
-  const height = image.height * scale
-  const dx = (canvas.width - width) / 2
-  const dy = (canvas.height - height) / 2
-
-  const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-  bg.addColorStop(0, '#eef5ff')
-  bg.addColorStop(0.52, '#f8fbff')
-  bg.addColorStop(1, '#dbeafe')
-  ctx.fillStyle = bg
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.drawImage(image, dx, dy, width, height)
-
+  const size = Math.min(image.width, image.height)
+  const sx = Math.max(0, (image.width - size) / 2)
+  const sy = Math.max(0, (image.height - size) / 2)
+  ctx.drawImage(image, sx, sy, size, size, 0, 0, 512, 512)
   return canvas.toDataURL('image/webp', 0.88)
 }
 
