@@ -59,10 +59,13 @@
   position: absolute;
   top: 18px;
   right: 66px;
-  width: 40px;
+  min-width: 82px;
   height: 40px;
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
   border: 1px solid color-mix(in srgb, var(--chapter-color) 22%, var(--border));
   border-radius: 15px;
   background:
@@ -73,6 +76,8 @@
     0 12px 28px color-mix(in srgb, var(--chapter-color) 10%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
   cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .profile-theme-toggle:hover {
@@ -615,9 +620,15 @@
   .profile-theme-toggle {
     top: 14px;
     right: 56px;
+    min-width: 36px;
     width: 36px;
     height: 36px;
+    padding: 0;
     border-radius: 14px;
+  }
+
+  .profile-theme-toggle span {
+    display: none;
   }
 
   .profile-back {

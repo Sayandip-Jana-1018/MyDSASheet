@@ -196,8 +196,15 @@ export default function ProfileSyncModal({
         <button className="profile-close" type="button" onClick={onClose} aria-label="Close profile sync">
           <X size={17} />
         </button>
-        <button className="profile-theme-toggle" type="button" onClick={toggleTheme} aria-label="Toggle theme">
+        <button
+          className="profile-theme-toggle"
+          type="button"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
           {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+          <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
         </button>
         {profile?.claimed && mode === 'manage' && (
           <button className="profile-back" type="button" onClick={startFresh} aria-label="Back to guest mode">

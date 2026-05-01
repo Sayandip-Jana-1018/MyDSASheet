@@ -2,7 +2,7 @@
 -- Paste and run this entire file in the Supabase SQL Editor.
 -- No Supabase Auth required: users claim a profile with a private sync code.
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.community_profiles (
   id uuid primary key,
@@ -63,7 +63,7 @@ returns text
 language sql
 immutable
 as $$
-  select encode(digest(upper(trim(coalesce(p_sync_code, ''))), 'sha256'), 'hex')
+  select encode(extensions.digest(convert_to(upper(trim(coalesce(p_sync_code, ''))), 'UTF8'), 'sha256'), 'hex')
 $$;
 
 create or replace function public.apply_profile_payload(
