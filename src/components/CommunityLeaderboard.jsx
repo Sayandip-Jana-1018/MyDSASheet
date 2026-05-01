@@ -39,7 +39,7 @@ function FriendProfile({ friendId, onBack }) {
   if (error) return <div className="profile-error">{error}</div>
   if (!profile) return <div className="profile-error">Profile not found.</div>
 
-  const { username, total_solved, chapter_progress, difficulty_breakdown, solved_problems, tracker_progress, last_active } = profile
+  const { username, total_solved, chapter_progress, difficulty_breakdown, solved_problems, tracker_progress, last_active, avatar_url } = profile
   const diff = difficulty_breakdown || { easy: 0, medium: 0, hard: 0 }
   const chProgress = chapter_progress || {}
   const trackerData = tracker_progress || {}
@@ -107,7 +107,11 @@ function FriendProfile({ friendId, onBack }) {
       {/* Hero card */}
       <div className="profile-hero">
         <div className="profile-avatar-lg">
-          {username?.charAt(0).toUpperCase() || '?'}
+          {avatar_url ? (
+            <img src={avatar_url} alt={`${username || 'Developer'} avatar`} />
+          ) : (
+            <span>{username?.charAt(0).toUpperCase() || '?'}</span>
+          )}
         </div>
         <div className="profile-hero-info">
           <h2>{username || 'Anonymous'}</h2>
@@ -183,7 +187,7 @@ function FriendProfile({ friendId, onBack }) {
   )
 }
 
-export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, syncNow }) {
+export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, syncNow, profile, onOpenProfile }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
   const [copyState, setCopyState] = useState('idle')
@@ -203,7 +207,7 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
 
   useEffect(() => {
     fetchLeaderboard()
-  }, [])
+  }, [profile?.leaderboardOptIn, stats?.totalSolved])
 
   const fetchLeaderboard = async () => {
     try {
@@ -212,9 +216,10 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
         return
       }
 
-      const { data, error } = await supabase
-        .from('community_profiles')
-        .select('id, username, total_solved, last_active, difficulty_breakdown')
+        const { data, error } = await supabase
+          .from('community_profiles')
+          .select('id, username, total_solved, last_active, difficulty_breakdown, avatar_url, leaderboard_opt_in')
+        .eq('leaderboard_opt_in', true)
         .order('total_solved', { ascending: false })
         .limit(50)
 
@@ -222,6 +227,8 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
       setLeaderboard(data || [])
     } catch (err) {
       console.error('Error fetching leaderboard:', err)
+      setShareHint('Run the updated Supabase schema to enable clean opt-in leaderboard rows.')
+      setLeaderboard([])
     } finally {
       setLoading(false)
     }
@@ -246,6 +253,18 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
   }
 
   const handleCopyLink = async () => {
+    if (!profile?.claimed) {
+      setShareHint('Claim a profile first, then your progress can be shared across devices.')
+      onOpenProfile?.()
+      return
+    }
+
+    if (!profile?.leaderboardOptIn) {
+      setShareHint('Turn on leaderboard visibility in your profile before sharing public stats.')
+      onOpenProfile?.()
+      return
+    }
+
     const url = new URL(window.location.origin + window.location.pathname)
     url.searchParams.set('friend', currentUserId)
     const shareUrl = url.toString()
@@ -318,7 +337,11 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
         <div className="user-card">
           <div className="user-info">
             <div className="user-avatar">
-              {currentUsername.charAt(0).toUpperCase()}
+              {profile?.avatarUrl ? (
+                <img src={profile.avatarUrl} alt={`${currentUsername || 'Profile'} avatar`} />
+              ) : (
+                <span>{(currentUsername || 'P').charAt(0).toUpperCase()}</span>
+              )}
             </div>
             <div className="user-details">
               {isEditingName ? (
@@ -348,7 +371,11 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
           <button className="share-btn" onClick={handleCopyLink}>
             {copyState === 'copied' ? <Check size={16} /> : <Share2 size={16} />}
             <span>
-              {copyState === 'syncing'
+              {!profile?.claimed
+                ? 'Claim Profile To Share'
+                : !profile?.leaderboardOptIn
+                  ? 'Make Public To Share'
+                  : copyState === 'syncing'
                 ? 'Syncing Stats...'
                 : copyState === 'copied'
                   ? 'Copied Link!'
@@ -391,7 +418,15 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
                      idx + 1}
                   </span>
                   <span className="col-user">
-                    {user.username} {isMe && <span className="me-badge">You</span>}
+                    <span className="row-avatar">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={`${user.username || 'Developer'} avatar`} />
+                      ) : (
+                        <span>{(user.username || 'D').charAt(0).toUpperCase()}</span>
+                      )}
+                    </span>
+                    <span className="row-name">{user.username}</span>
+                    {isMe && <span className="me-badge">You</span>}
                   </span>
                   <span className="col-diff">
                     <span className="mini-diff easy-mini">{diff.easy || 0}</span>

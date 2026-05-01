@@ -2,14 +2,24 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { chapters } from '../data/chapters'
 import { supabase } from '../lib/supabase'
 
+const PROFILE_KEY = 'dsa-profile'
+const LEGACY_ID_KEY = 'dsa-user-id'
+const LEGACY_NAME_KEY = 'dsa-username'
+const EMPTY_PROGRESS = {}
+
 function loadJSON(key, fallback) {
   try {
     const v = localStorage.getItem(key)
     return v ? JSON.parse(v) : fallback
   } catch { return fallback }
 }
+
 function saveJSON(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)) } catch { /* ignore */ }
+}
+
+function saveText(key, val) {
+  try { localStorage.setItem(key, val) } catch { /* ignore */ }
 }
 
 function normalizeMap(value, valueGuard = Boolean) {
@@ -27,10 +37,54 @@ function normalizeTextMap(value) {
   return normalizeMap(value, val => typeof val === 'string' && val.trim().length > 0)
 }
 
-function buildProfilePayload({ userId, username, stats, tracker, bookmarks }) {
+function createId() {
+  return crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)
+}
+
+function createSyncCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = new Uint8Array(12)
+  crypto.getRandomValues(bytes)
+  const chars = Array.from(bytes, byte => alphabet[byte % alphabet.length])
+  return `DSA-${chars.slice(0, 4).join('')}-${chars.slice(4, 8).join('')}-${chars.slice(8, 12).join('')}`
+}
+
+function cleanName(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 32)
+}
+
+function loadProfile() {
+  const saved = loadJSON(PROFILE_KEY, null)
+  if (saved && typeof saved === 'object') {
+    return {
+      id: saved.id || createId(),
+      username: cleanName(saved.username),
+      syncCode: typeof saved.syncCode === 'string' ? saved.syncCode : '',
+      avatarUrl: typeof saved.avatarUrl === 'string' ? saved.avatarUrl : '',
+      avatarPath: typeof saved.avatarPath === 'string' ? saved.avatarPath : '',
+      claimed: Boolean(saved.claimed),
+      leaderboardOptIn: Boolean(saved.leaderboardOptIn),
+      dismissedOnboarding: Boolean(saved.dismissedOnboarding),
+    }
+  }
+
+  const legacyId = localStorage.getItem(LEGACY_ID_KEY)
+  const legacyName = cleanName(localStorage.getItem(LEGACY_NAME_KEY))
+
   return {
-    id: userId,
-    username,
+    id: legacyId || createId(),
+    username: legacyName,
+    syncCode: '',
+    avatarUrl: '',
+    avatarPath: '',
+    claimed: false,
+    leaderboardOptIn: false,
+    dismissedOnboarding: false,
+  }
+}
+
+function buildProfilePayload({ stats, tracker, bookmarks }) {
+  return {
     total_solved: stats.totalSolved,
     chapter_progress: stats.chapterStats,
     difficulty_breakdown: stats.difficultyBreakdown,
@@ -41,34 +95,61 @@ function buildProfilePayload({ userId, username, stats, tracker, bookmarks }) {
   }
 }
 
+function dataUrlToBlob(dataUrl) {
+  const [metadata, payload] = String(dataUrl || '').split(',')
+  const mimeType = metadata?.match(/data:([^;]+);base64/)?.[1] || 'image/webp'
+  const bytes = atob(payload || '')
+  const buffer = new Uint8Array(bytes.length)
+
+  for (let i = 0; i < bytes.length; i += 1) {
+    buffer[i] = bytes.charCodeAt(i)
+  }
+
+  return new Blob([buffer], { type: mimeType })
+}
+
+function payloadToLocalProgress(profile) {
+  const solved = Array.isArray(profile?.solved_problems) ? profile.solved_problems : []
+  const saved = Array.isArray(profile?.bookmarked_problems) ? profile.bookmarked_problems : []
+
+  return {
+    problems: solved.reduce((acc, id) => {
+      if (typeof id === 'string' && id) acc[id] = true
+      return acc
+    }, {}),
+    bookmarks: saved.reduce((acc, id) => {
+      if (typeof id === 'string' && id) acc[id] = true
+      return acc
+    }, {}),
+    tracker: normalizeMap(profile?.tracker_progress || {}, Boolean),
+  }
+}
+
 export function useProgress() {
   const [problems, setProblems] = useState(() => normalizeMap(loadJSON('dsa-problems', {}), Boolean))
   const [tracker, setTracker] = useState(() => normalizeMap(loadJSON('dsa-tracker', {}), Boolean))
   const [bookmarks, setBookmarks] = useState(() => normalizeMap(loadJSON('dsa-bookmarks', {}), Boolean))
   const [notes, setNotes] = useState(() => normalizeTextMap(loadJSON('dsa-notes', {})))
+  const [profile, setProfileState] = useState(loadProfile)
+  const [syncStatus, setSyncStatus] = useState({ state: 'idle', message: '' })
 
-  // Ensure the user has a unique ID for community tracking
-  const [userId, setUserId] = useState(() => {
-    let id = localStorage.getItem('dsa-user-id')
-    if (!id) {
-      id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)
-      localStorage.setItem('dsa-user-id', id)
+  const persistProfile = useCallback((nextProfile) => {
+    const normalized = {
+      id: nextProfile.id || createId(),
+      username: cleanName(nextProfile.username),
+      syncCode: nextProfile.syncCode || '',
+      avatarUrl: nextProfile.avatarUrl || '',
+      avatarPath: nextProfile.avatarPath || '',
+      claimed: Boolean(nextProfile.claimed),
+      leaderboardOptIn: Boolean(nextProfile.leaderboardOptIn),
+      dismissedOnboarding: Boolean(nextProfile.dismissedOnboarding),
     }
-    return id
-  })
-
-  // Also store username, fallback to a fun random name
-  const [username, setUsername] = useState(() => {
-    let name = localStorage.getItem('dsa-username')
-    if (!name) {
-      const adjectives = ['Anonymous', 'Silent', 'Mysterious', 'Determined', 'Focused', 'Rapid', 'Stealthy', 'Clever']
-      const nouns = ['Coder', 'Developer', 'Hacker', 'Engineer', 'Ninja', 'Solver', 'Architect', 'Alchemist']
-      const randName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`
-      name = randName
-      localStorage.setItem('dsa-username', name)
-    }
-    return name
-  })
+    saveJSON(PROFILE_KEY, normalized)
+    saveText(LEGACY_ID_KEY, normalized.id)
+    if (normalized.username) saveText(LEGACY_NAME_KEY, normalized.username)
+    setProfileState(normalized)
+    return normalized
+  }, [])
 
   const toggleProblem = useCallback((id) => {
     if (!id) return
@@ -173,42 +254,264 @@ export function useProgress() {
     }
   }, [problems, bookmarks, notes])
 
-  // Stable reference for Supabase sync — prevents re-triggering on every object change
-  const syncDataRef = useRef({ userId, username, stats, tracker, bookmarks })
-  syncDataRef.current = { userId, username, stats, tracker, bookmarks }
+  const syncDataRef = useRef({ profile, stats, tracker, bookmarks })
+  syncDataRef.current = { profile, stats, tracker, bookmarks }
 
-  // Sync to Supabase in the background (debounced)
-  const syncNow = useCallback(async () => {
-    const { userId: uid, username: uname, stats: s, tracker: t, bookmarks: b } = syncDataRef.current
+  const claimRemoteProfile = useCallback(async (nextProfile, payload) => {
+    const { data, error } = await supabase.rpc('claim_community_profile', {
+      p_id: nextProfile.id,
+      p_username: cleanName(nextProfile.username) || 'DSA Pilot',
+      p_sync_code: nextProfile.syncCode,
+      p_leaderboard_opt_in: Boolean(nextProfile.leaderboardOptIn),
+      p_payload: payload,
+    })
+
+    if (error) throw error
+    const remote = Array.isArray(data) ? data[0] : data
+    return persistProfile({
+      ...nextProfile,
+      avatarUrl: remote?.avatar_url || nextProfile.avatarUrl || '',
+      avatarPath: remote?.avatar_path || nextProfile.avatarPath || '',
+    })
+  }, [persistProfile])
+
+  const syncNow = useCallback(async (overrideProfile) => {
+    const { profile: currentProfile, stats: s, tracker: t, bookmarks: b } = syncDataRef.current
+    const nextProfile = overrideProfile || currentProfile
+
     try {
-      if (!supabase || !uid) return { ok: false, skipped: true }
-      const { error } = await supabase
-        .from('community_profiles')
-        .upsert(buildProfilePayload({
-          userId: uid,
-          username: uname,
-          stats: s,
-          tracker: t,
-          bookmarks: b
-        }), { onConflict: 'id' })
+      if (!supabase) return { ok: false, skipped: true, reason: 'missing-config' }
+      if (!nextProfile?.claimed || !nextProfile?.syncCode) {
+        return { ok: false, skipped: true, reason: 'private-profile' }
+      }
 
-      if (error) throw error
+      const payload = buildProfilePayload({ stats: s, tracker: t, bookmarks: b })
+      const { data, error } = await supabase.rpc('sync_community_profile', {
+        p_id: nextProfile.id,
+        p_sync_code: nextProfile.syncCode,
+        p_username: cleanName(nextProfile.username) || 'DSA Pilot',
+        p_leaderboard_opt_in: Boolean(nextProfile.leaderboardOptIn),
+        p_payload: payload,
+      })
+
+      if (error) {
+        await claimRemoteProfile(nextProfile, payload)
+        setSyncStatus({ state: 'synced', message: '' })
+        return { ok: true, recovered: true }
+      }
+      const remote = Array.isArray(data) ? data[0] : data
+      if (
+        (remote?.avatar_url !== undefined || remote?.avatar_path !== undefined) &&
+        ((remote?.avatar_url || '') !== (nextProfile.avatarUrl || '') ||
+          (remote?.avatar_path || '') !== (nextProfile.avatarPath || ''))
+      ) {
+        persistProfile({
+          ...nextProfile,
+          avatarUrl: remote?.avatar_url || nextProfile.avatarUrl || '',
+          avatarPath: remote?.avatar_path || nextProfile.avatarPath || '',
+        })
+      }
+      setSyncStatus({ state: 'synced', message: nextProfile.leaderboardOptIn ? 'Leaderboard synced.' : 'Private profile synced.' })
       return { ok: true }
     } catch (err) {
-      console.error('Failed to sync to Supabase:', err)
+      setSyncStatus({ state: 'error', message: '' })
       return { ok: false, error: err }
     }
-  }, [])
+  }, [claimRemoteProfile, persistProfile])
 
   useEffect(() => {
+    if (!profile.claimed) return undefined
     const timer = setTimeout(async () => {
       await syncNow()
-    }, 2000)
+    }, 1800)
     return () => clearTimeout(timer)
-  }, [problems, tracker, bookmarks, username, syncNow])
+  }, [problems, tracker, bookmarks, profile, syncNow])
+
+  const claimProfile = useCallback(async ({ username, leaderboardOptIn = true }) => {
+    const displayName = cleanName(username)
+    if (!displayName) {
+      return { ok: false, error: new Error('Name is required') }
+    }
+
+    const nextProfile = persistProfile({
+      ...profile,
+      username: displayName,
+      syncCode: profile.syncCode || createSyncCode(),
+      claimed: true,
+      leaderboardOptIn,
+      dismissedOnboarding: true,
+    })
+
+    setSyncStatus({ state: 'syncing', message: 'Creating profile...' })
+
+    try {
+      if (!supabase) {
+        setSyncStatus({ state: 'local', message: 'Saved locally. Add Supabase env vars to publish.' })
+        return { ok: true, profile: nextProfile, localOnly: true }
+      }
+
+      const payload = buildProfilePayload({ stats, tracker, bookmarks })
+      const savedProfile = await claimRemoteProfile(nextProfile, payload)
+      setSyncStatus({ state: 'synced', message: savedProfile.leaderboardOptIn ? 'Profile joined leaderboard.' : 'Private sync profile ready.' })
+      return { ok: true, profile: savedProfile }
+    } catch (err) {
+      console.error('Failed to claim Supabase profile:', err)
+      setSyncStatus({ state: 'error', message: 'Profile saved locally. Run the new Supabase schema to publish.' })
+      return { ok: false, profile: nextProfile, error: err }
+    }
+  }, [bookmarks, claimRemoteProfile, persistProfile, profile, stats, tracker])
+
+  const connectWithCode = useCallback(async (code) => {
+    const syncCode = String(code || '').trim().toUpperCase()
+    if (!syncCode) return { ok: false, error: new Error('Sync code is required') }
+
+    setSyncStatus({ state: 'syncing', message: 'Loading profile...' })
+
+    try {
+      if (!supabase) throw new Error('Supabase is not configured')
+
+      const { data, error } = await supabase.rpc('restore_community_profile', {
+        p_sync_code: syncCode,
+      })
+
+      if (error) throw error
+      const remote = Array.isArray(data) ? data[0] : data
+      if (!remote?.id) throw new Error('No profile found for this sync code')
+
+      const restored = payloadToLocalProgress(remote)
+      setProblems(restored.problems)
+      setBookmarks(restored.bookmarks)
+      setTracker(restored.tracker)
+      saveJSON('dsa-problems', restored.problems)
+      saveJSON('dsa-bookmarks', restored.bookmarks)
+      saveJSON('dsa-tracker', restored.tracker)
+
+      const nextProfile = persistProfile({
+        id: remote.id,
+        username: cleanName(remote.username) || 'DSA Pilot',
+        syncCode,
+        avatarUrl: remote.avatar_url || '',
+        avatarPath: remote.avatar_path || '',
+        claimed: true,
+        leaderboardOptIn: Boolean(remote.leaderboard_opt_in),
+        dismissedOnboarding: true,
+      })
+
+      setSyncStatus({ state: 'synced', message: 'Profile connected on this device.' })
+      return { ok: true, profile: nextProfile }
+    } catch (err) {
+      console.error('Failed to restore profile:', err)
+      setSyncStatus({ state: 'error', message: 'Could not find that sync code.' })
+      return { ok: false, error: err }
+    }
+  }, [persistProfile])
+
+  const updateProfileName = useCallback(async (name) => {
+    const displayName = cleanName(name)
+    if (!displayName) return { ok: false }
+    const nextProfile = persistProfile({ ...profile, username: displayName, dismissedOnboarding: true })
+    const syncResult = await syncNow(nextProfile)
+    return { ok: syncResult?.ok !== false, profile: nextProfile, syncResult }
+  }, [persistProfile, profile, syncNow])
+
+  const setLeaderboardOptIn = useCallback((value) => {
+    const nextProfile = persistProfile({ ...profile, leaderboardOptIn: Boolean(value), dismissedOnboarding: true })
+    syncNow(nextProfile)
+    return nextProfile
+  }, [persistProfile, profile, syncNow])
+
+  const uploadAvatar = useCallback(async (avatarDataUrl) => {
+    if (!profile.claimed || !profile.syncCode) {
+      return { ok: false, error: new Error('Claim your profile before uploading an avatar.') }
+    }
+
+    try {
+      if (!supabase) throw new Error('Supabase is not configured')
+      setSyncStatus({ state: 'syncing', message: avatarDataUrl ? 'Uploading avatar...' : 'Removing avatar...' })
+
+      const { stats: s, tracker: t, bookmarks: b } = syncDataRef.current
+      const ensuredProfile = await claimRemoteProfile(profile, buildProfilePayload({ stats: s, tracker: t, bookmarks: b }))
+
+      let avatarUrl = ''
+      let avatarPath = ''
+
+      if (avatarDataUrl) {
+        const avatarBlob = dataUrlToBlob(avatarDataUrl)
+        avatarPath = `${ensuredProfile.id}/avatar.webp`
+
+        const { error: uploadError } = await supabase.storage
+          .from('profile-avatars')
+          .upload(avatarPath, avatarBlob, {
+            contentType: avatarBlob.type || 'image/webp',
+            upsert: true,
+          })
+
+        if (uploadError) throw uploadError
+
+        const { data: publicData } = supabase.storage
+          .from('profile-avatars')
+          .getPublicUrl(avatarPath)
+
+        avatarUrl = publicData?.publicUrl ? `${publicData.publicUrl}?v=${Date.now()}` : ''
+      } else if (ensuredProfile.avatarPath) {
+        await supabase.storage.from('profile-avatars').remove([ensuredProfile.avatarPath])
+      }
+
+      const { data, error } = await supabase.rpc('set_community_profile_avatar', {
+        p_id: ensuredProfile.id,
+        p_sync_code: ensuredProfile.syncCode,
+        p_avatar_url: avatarUrl,
+        p_avatar_path: avatarPath,
+      })
+
+      if (error) throw error
+      const remote = Array.isArray(data) ? data[0] : data
+
+      const nextProfile = persistProfile({
+        ...ensuredProfile,
+        avatarUrl: remote?.avatar_url || '',
+        avatarPath: remote?.avatar_path || '',
+        dismissedOnboarding: true,
+      })
+
+      setSyncStatus({ state: 'synced', message: nextProfile.avatarUrl ? 'Avatar updated.' : 'Avatar removed.' })
+      return { ok: true, profile: nextProfile }
+    } catch (err) {
+      setSyncStatus({ state: 'error', message: 'Avatar upload failed. Run the latest schema and check the bucket.' })
+      return { ok: false, error: err }
+    }
+  }, [claimRemoteProfile, persistProfile, profile])
+
+  const dismissOnboarding = useCallback(() => {
+    persistProfile({ ...profile, dismissedOnboarding: true })
+  }, [persistProfile, profile])
+
+  const startFreshLocal = useCallback(() => {
+    setProblems({})
+    setTracker({})
+    setBookmarks({})
+    setNotes({})
+    saveJSON('dsa-problems', EMPTY_PROGRESS)
+    saveJSON('dsa-tracker', EMPTY_PROGRESS)
+    saveJSON('dsa-bookmarks', EMPTY_PROGRESS)
+    saveJSON('dsa-notes', EMPTY_PROGRESS)
+
+    const nextProfile = persistProfile({
+      id: createId(),
+      username: '',
+      syncCode: '',
+      avatarUrl: '',
+      avatarPath: '',
+      claimed: false,
+      leaderboardOptIn: false,
+      dismissedOnboarding: false,
+    })
+
+    setSyncStatus({ state: 'idle', message: 'Fresh browser profile ready.' })
+    return nextProfile
+  }, [persistProfile])
 
   const resetAll = useCallback(async () => {
-    // Clear localStorage
     setProblems({})
     setTracker({})
     setBookmarks({})
@@ -218,26 +521,10 @@ export function useProgress() {
     saveJSON('dsa-bookmarks', {})
     saveJSON('dsa-notes', {})
 
-    // Delete from Supabase
-    try {
-      if (supabase && userId) {
-        await supabase.from('community_profiles').delete().eq('id', userId)
-      }
-    } catch (err) {
-      console.error('Failed to delete Supabase profile:', err)
-    }
-
-    // Generate new identity
-    const newId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36)
-    localStorage.setItem('dsa-user-id', newId)
-    setUserId(newId)
-
-    const adjectives = ['Anonymous', 'Silent', 'Mysterious', 'Determined', 'Focused', 'Rapid', 'Stealthy', 'Clever']
-    const nouns = ['Coder', 'Developer', 'Hacker', 'Engineer', 'Ninja', 'Solver', 'Architect', 'Alchemist']
-    const newName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`
-    localStorage.setItem('dsa-username', newName)
-    setUsername(newName)
-  }, [userId])
+    window.setTimeout(() => {
+      syncNow()
+    }, 0)
+  }, [syncNow])
 
   return {
     isProblemChecked, toggleProblem,
@@ -245,6 +532,17 @@ export function useProgress() {
     isBookmarked, toggleBookmark,
     getNote, setNote, notes,
     stats, resetAll, syncNow,
-    userId, username, setUsername,
+    userId: profile.id,
+    username: profile.username || 'Private pilot',
+    setUsername: updateProfileName,
+    profile,
+    syncStatus,
+    claimProfile,
+    connectWithCode,
+    updateProfileName,
+    setLeaderboardOptIn,
+    uploadAvatar,
+    dismissOnboarding,
+    startFreshLocal,
   }
 }

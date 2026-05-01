@@ -8,6 +8,7 @@ import FilterBar from './components/FilterBar'
 import ChapterSidebar from './components/ChapterSidebar'
 import ChapterDetail from './components/ChapterDetail'
 import CommunityLeaderboard from './components/CommunityLeaderboard'
+import ProfileSyncModal from './components/ProfileSyncModal'
 
 const views = ['overview', 'problems', 'tracker']
 
@@ -33,6 +34,8 @@ export default function App() {
     getNote, setNote,
     stats, resetAll, syncNow,
     userId, username, setUsername,
+    profile, claimProfile, connectWithCode, setLeaderboardOptIn, uploadAvatar,
+    dismissOnboarding, startFreshLocal,
   } = useProgress()
 
   const [filter, setFilter] = useState('all')
@@ -45,6 +48,8 @@ export default function App() {
   })
   const [activeView, setActiveView] = useState('overview')
   const [showCommunity, setShowCommunity] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
+  const [profileModalMode, setProfileModalMode] = useState('welcome')
 
   // Check if a friend's link was shared
   useEffect(() => {
@@ -52,7 +57,31 @@ export default function App() {
     if (params.has('friend')) {
       setShowCommunity(true)
     }
-  }, [])
+    const syncCode = params.get('sync')
+    if (syncCode) {
+      setProfileModalMode('connect')
+      setProfileModalOpen(true)
+      connectWithCode(syncCode).then(result => {
+        if (result?.ok) {
+          setProfileModalMode('manage')
+          const url = new URL(window.location.href)
+          url.searchParams.delete('sync')
+          window.history.replaceState({}, '', url.toString())
+        }
+      })
+    }
+  }, [connectWithCode])
+
+  useEffect(() => {
+    if (!profile.claimed && !profile.dismissedOnboarding) {
+      const timer = window.setTimeout(() => {
+        setProfileModalMode('welcome')
+        setProfileModalOpen(true)
+      }, 700)
+      return () => window.clearTimeout(timer)
+    }
+    return undefined
+  }, [profile.claimed, profile.dismissedOnboarding])
 
   const activeData = chapters.find(c => c.id === activeChapter) || chapters[0]
   const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length }
@@ -136,8 +165,13 @@ export default function App() {
     <div className="app" style={{ '--chapter-color': activeData?.color || '#315cf6' }}>
       <TopBar
         stats={stats}
+        profile={profile}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(open => !open)}
+        onOpenProfile={() => {
+          setProfileModalMode(profile.claimed ? 'manage' : 'welcome')
+          setProfileModalOpen(true)
+        }}
         onToggleCommunity={() => {
           setShowCommunity(!showCommunity)
           resetWorkspaceScroll()
@@ -192,6 +226,11 @@ export default function App() {
               setUsername={setUsername}
               stats={stats}
               syncNow={syncNow}
+              profile={profile}
+              onOpenProfile={() => {
+                setProfileModalMode(profile.claimed ? 'manage' : 'welcome')
+                setProfileModalOpen(true)
+              }}
             />
           ) : activeData ? (
             <ErrorBoundary
@@ -221,6 +260,24 @@ export default function App() {
           ) : null}
         </main>
       </div>
+
+      <ProfileSyncModal
+        open={profileModalOpen}
+        initialMode={profileModalMode}
+        profile={profile}
+        stats={stats}
+        onClose={() => setProfileModalOpen(false)}
+        onClaim={claimProfile}
+        onConnect={connectWithCode}
+        onRename={setUsername}
+        onOptInChange={setLeaderboardOptIn}
+        onUploadAvatar={uploadAvatar}
+        onContinuePrivate={() => {
+          dismissOnboarding()
+          setProfileModalOpen(false)
+        }}
+        onStartFresh={startFreshLocal}
+      />
     </div>
   )
 }

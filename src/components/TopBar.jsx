@@ -1,8 +1,8 @@
-import { BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sparkles, Sun, Trophy, Users } from 'lucide-react'
+import { BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sparkles, Sun, Trophy, UserRound, Users } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import './TopBar.css'
 
-export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCommunity, isCommunityView }) {
+export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCommunity, isCommunityView, profile, onOpenProfile }) {
   const { theme, toggleTheme } = useTheme()
 
   return (
@@ -58,6 +58,18 @@ export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCo
         </div>
 
         <div className="topbar-actions">
+          <button
+            className={`icon-btn profile-btn ${profile?.claimed ? 'is-claimed' : ''}`}
+            onClick={onOpenProfile}
+            aria-label="Profile and sync"
+            title={profile?.claimed ? `Profile: ${profile.username}` : 'Claim or sync profile'}
+          >
+            {profile?.avatarUrl ? (
+              <img src={profile.avatarUrl} alt={`${profile.username || 'Profile'} avatar`} />
+            ) : (
+              <UserRound size={17} />
+            )}
+          </button>
           <button 
             className={`icon-btn ${isCommunityView ? 'is-active' : ''}`} 
             onClick={onToggleCommunity} 

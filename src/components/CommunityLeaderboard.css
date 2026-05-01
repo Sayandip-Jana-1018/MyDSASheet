@@ -85,6 +85,26 @@
   font-size: 22px;
   font-weight: 800;
   box-shadow: 0 10px 28px color-mix(in srgb, var(--chapter-color) 28%, transparent);
+  overflow: hidden;
+  flex: 0 0 52px;
+}
+
+.user-avatar img,
+.profile-avatar-lg img,
+.row-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.user-avatar span,
+.profile-avatar-lg span,
+.row-avatar span {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
 }
 
 .user-details {
@@ -98,6 +118,7 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -222,6 +243,7 @@
 .leaderboard-row {
   display: flex;
   align-items: center;
+  min-height: 58px;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
@@ -258,6 +280,31 @@
   gap: 10px;
   font-weight: 700;
   color: var(--text-primary);
+  min-width: 0;
+}
+
+.row-avatar {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  overflow: hidden;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 40%),
+    linear-gradient(135deg, var(--chapter-color, #315cf6), #7c3aed);
+  color: white;
+  font-size: 14px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--chapter-color) 16%, transparent);
+}
+
+.row-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .col-diff {
@@ -350,7 +397,9 @@
 .profile-hero {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 28px;
+  text-align: center;
   padding: clamp(24px, 3vw, 36px);
   border: 1px solid color-mix(in srgb, var(--chapter-color) 22%, var(--border));
   border-radius: var(--radius-xl);
@@ -396,11 +445,15 @@
     inset 0 0 0 1px rgba(255, 255, 255, 0.14);
   position: relative;
   z-index: 1;
+  overflow: hidden;
 }
 
 .profile-hero-info {
   position: relative;
   z-index: 1;
+  display: grid;
+  justify-items: center;
+  min-width: 0;
 }
 
 .profile-hero-info h2 {
@@ -414,6 +467,7 @@
 .profile-meta-row {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   margin-top: 12px;
 }
