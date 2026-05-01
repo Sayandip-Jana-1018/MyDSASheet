@@ -116,6 +116,24 @@ function payloadToLocalProgress(profile) {
   }
 }
 
+async function getFunctionErrorMessage(error) {
+  try {
+    const context = error?.context
+    if (context && typeof context.json === 'function') {
+      const body = await context.json()
+      return body?.error || body?.message || error.message
+    }
+    if (context && typeof context.text === 'function') {
+      const text = await context.text()
+      return text || error.message
+    }
+  } catch {
+    // Keep the original error if the response body was already read or invalid.
+  }
+
+  return error?.message || 'Edge Function request failed.'
+}
+
 export function useProgress() {
   const [problems, setProblems] = useState(() => normalizeMap(loadJSON('dsa-problems', {}), Boolean))
   const [tracker, setTracker] = useState(() => normalizeMap(loadJSON('dsa-tracker', {}), Boolean))
@@ -457,7 +475,7 @@ export function useProgress() {
         },
       })
 
-      if (error) throw error
+      if (error) throw new Error(await getFunctionErrorMessage(error))
 
       const nextProfile = persistProfile({
         ...ensuredProfile,
@@ -469,7 +487,7 @@ export function useProgress() {
       setSyncStatus({ state: 'synced', message: nextProfile.avatarUrl ? 'Avatar updated.' : 'Avatar removed.' })
       return { ok: true, profile: nextProfile }
     } catch (err) {
-      setSyncStatus({ state: 'error', message: 'Avatar upload failed. Check env vars, schema, bucket, and Edge Function deploy.' })
+      setSyncStatus({ state: 'error', message: err?.message || 'Avatar upload failed. Check env vars, schema, bucket, and Edge Function deploy.' })
       return { ok: false, error: err }
     }
   }, [claimRemoteProfile, persistProfile, profile])
