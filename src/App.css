@@ -85,12 +85,19 @@ a {
 html[data-theme="dark"] .app {
   --accent: color-mix(in srgb, var(--chapter-color) 76%, white);
   --accent-soft: color-mix(in srgb, var(--chapter-color) 16%, transparent);
-  --border: color-mix(in srgb, var(--chapter-color) 18%, rgba(255, 255, 255, 0.18));
-  --border-strong: color-mix(in srgb, var(--chapter-color) 34%, rgba(255, 255, 255, 0.26));
-  --bg-body: color-mix(in srgb, var(--chapter-color) 5%, #060606);
-  --bg-subtle: color-mix(in srgb, var(--chapter-color) 6%, rgba(20, 20, 21, 0.74));
-  --bg-muted: color-mix(in srgb, var(--chapter-color) 9%, rgba(38, 38, 40, 0.74));
-  --scrollbar-thumb: color-mix(in srgb, var(--chapter-color) 26%, #323232);
+  --border: color-mix(in srgb, var(--chapter-color) 16%, rgba(148, 163, 184, 0.2));
+  --border-strong: color-mix(in srgb, var(--chapter-color) 32%, rgba(244, 241, 234, 0.28));
+  --bg-body: color-mix(in srgb, var(--chapter-color) 4%, #080a0f);
+  --bg-canvas: color-mix(in srgb, var(--chapter-color) 5%, rgba(17, 24, 39, 0.74));
+  --bg-subtle: color-mix(in srgb, var(--chapter-color) 6%, rgba(13, 17, 26, 0.78));
+  --bg-muted: color-mix(in srgb, var(--chapter-color) 8%, rgba(31, 41, 55, 0.76));
+  --bg-elevated: color-mix(in srgb, var(--chapter-color) 4%, rgba(8, 10, 15, 0.86));
+  --scrollbar-thumb: color-mix(in srgb, var(--chapter-color) 24%, #323b4f);
+  background:
+    radial-gradient(820px 480px at 6% -10%, color-mix(in srgb, var(--chapter-color) 10%, transparent), transparent 68%),
+    radial-gradient(740px 500px at 104% 2%, color-mix(in srgb, var(--chapter-color) 8%, transparent), transparent 70%),
+    radial-gradient(720px 520px at 58% 116%, color-mix(in srgb, var(--chapter-color) 5%, transparent), transparent 72%),
+    linear-gradient(180deg, #0d111a 0%, var(--bg-body) 44%, #080a0f 100%);
 }
 
 .app-shell {
@@ -213,7 +220,60 @@ html[data-theme="dark"] .app {
   flex: 1 1 auto;
   min-width: 0;
   overflow-y: auto;
+  overflow-anchor: none;
   background: var(--bg-body);
+}
+
+.workspace-fallback {
+  width: min(620px, calc(100% - 32px));
+  margin: clamp(28px, 8vh, 80px) auto;
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid color-mix(in srgb, var(--hard-text) 22%, var(--border));
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(360px 180px at 100% 0%, color-mix(in srgb, var(--hard-text) 10%, transparent), transparent 70%),
+    var(--bg-canvas);
+  box-shadow: var(--shadow-soft);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.workspace-fallback h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.1;
+}
+
+.workspace-fallback p:not(.eyebrow) {
+  max-width: 440px;
+  margin: 14px auto 0;
+}
+
+.workspace-fallback code {
+  display: block;
+  max-width: 100%;
+  margin: 18px auto 0;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  color: var(--hard-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.workspace-fallback button {
+  margin-top: 22px;
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 40%, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--bg-inverse);
+  color: var(--text-inverse);
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .drawer-scrim {

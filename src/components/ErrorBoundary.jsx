@@ -15,8 +15,21 @@ export class ErrorBoundary extends React.Component {
     this.setState({ errorInfo });
   }
 
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null, errorInfo: null });
+    }
+  }
+
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback({
+          error: this.state.error,
+          reset: () => this.setState({ hasError: false, error: null, errorInfo: null }),
+        });
+      }
+
       return (
         <div style={{
           padding: '40px',

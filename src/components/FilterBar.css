@@ -50,6 +50,10 @@
 .filter-set button {
   min-width: 0;
   min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1px solid var(--border);
   border-radius: 11px;
   background: transparent;
@@ -100,24 +104,19 @@
   padding: 20px;
   overflow: hidden;
   background:
-    radial-gradient(520px 420px at 50% 45%, color-mix(in srgb, var(--chapter-color) 20%, transparent), transparent 68%),
+    radial-gradient(520px 420px at 50% 45%, color-mix(in srgb, var(--chapter-color, var(--accent)) 20%, transparent), transparent 68%),
     color-mix(in srgb, var(--bg-body) 58%, rgba(0, 0, 0, 0.42));
   backdrop-filter: blur(18px) saturate(145%);
   z-index: 100;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 220ms var(--ease-out);
-}
-
-.modal-overlay.is-visible {
   opacity: 1;
   pointer-events: auto;
+  transition: opacity 220ms var(--ease-out);
 }
 
 .modal-content {
   position: relative;
-  width: 100%;
-  max-width: 350px;
+  width: min(340px, calc(100vw - 32px));
+  max-width: 100%;
   padding: 28px 26px 26px;
   border: 1px solid color-mix(in srgb, var(--hard-text) 20%, var(--border));
   border-radius: 28px;
@@ -128,12 +127,8 @@
     0 30px 90px color-mix(in srgb, var(--hard-text) 14%, transparent),
     0 16px 44px rgba(0, 0, 0, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.34);
-  transform: scale(0.96) translateY(10px);
-  transition: transform 220ms var(--ease-out);
-}
-
-.modal-content.is-visible {
   transform: scale(1) translateY(0);
+  transition: transform 220ms var(--ease-out);
 }
 
 .modal-close {
@@ -188,8 +183,8 @@
   min-width: 0;
 }
 
-.secondary-action,
-.danger-action {
+.modal-secondary-action,
+.modal-danger-action {
   min-width: 0;
   width: 104px;
   max-width: 100%;
@@ -201,13 +196,13 @@
   padding: 0 15px;
 }
 
-.secondary-action {
+.modal-secondary-action {
   border: 1px solid var(--border);
   background: var(--bg-subtle);
   color: var(--text-primary);
 }
 
-.danger-action {
+.modal-danger-action {
   border: 1px solid color-mix(in srgb, var(--hard-text) 82%, #b91c1c);
   background:
     linear-gradient(145deg, color-mix(in srgb, var(--hard-text) 88%, #ef4444), #b91c1c);
@@ -221,7 +216,7 @@
   }
 
   .modal-content {
-    width: 100%;
+    width: min(320px, calc(100vw - 24px));
     padding: 24px 16px 20px;
   }
 
@@ -238,7 +233,7 @@
 
 @media (max-width: 360px) {
   .modal-content {
-    width: 100%;
+    width: calc(100vw - 24px);
     padding-inline: 12px;
   }
 

@@ -156,6 +156,7 @@ function PlaybookPanel({ chapter, playbook }) {
 export default function ChapterDetail({
   chapter,
   chapterStats,
+  filter,
   activeView,
   onViewChange,
   onFilter,
@@ -173,9 +174,11 @@ export default function ChapterDetail({
   const pct = total ? Math.round((done / total) * 100) : 0
   const nextProblem = (chapter.problems || []).find(problem => !isProblemChecked(problem.id))
   const playbook = getPlaybook(chapter)
+  const unsolvedCount = (chapter.problems || []).filter(problem => !isProblemChecked(problem.id)).length
+  const isReviewingUnsolved = filter === 'unsolved'
 
   const reviewUnsolved = () => {
-    onFilter('unsolved')
+    onFilter(isReviewingUnsolved ? 'all' : 'unsolved', { scrollToProblems: true })
   }
 
   return (
@@ -203,10 +206,11 @@ export default function ChapterDetail({
               </button>
             )}
             <button
-              className="secondary-action"
+              className={`secondary-action ${isReviewingUnsolved ? 'is-active' : ''}`}
               onClick={reviewUnsolved}
             >
-              Review unsolved
+              <ListChecks size={16} />
+              {isReviewingUnsolved ? 'Show all problems' : `Review ${unsolvedCount} unsolved`}
             </button>
           </div>
         </div>

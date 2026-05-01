@@ -10,13 +10,32 @@ const difficultyClasses = {
 
 export default function ProblemTable({ problems, isProblemChecked, toggleProblem, isBookmarked, toggleBookmark, getNote, setNote }) {
   const [expandedNote, setExpandedNote] = useState(null)
+  const [interactionError, setInteractionError] = useState('')
+
+  const handleProblemToggle = (event, id) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setInteractionError('')
+
+    try {
+      toggleProblem(id)
+    } catch (err) {
+      console.error('Failed to update problem progress:', err)
+      setInteractionError('Could not update this problem yet. Your page is still safe, please try again.')
+    }
+  }
 
   const handleNoteToggle = (id) => {
     setExpandedNote(prev => prev === id ? null : id)
   }
 
   const handleNoteChange = (id, text) => {
-    setNote(id, text)
+    try {
+      setNote(id, text)
+    } catch (err) {
+      console.error('Failed to update note:', err)
+      setInteractionError('Could not save that note yet. Please try again.')
+    }
   }
 
   return (
@@ -29,6 +48,12 @@ export default function ProblemTable({ problems, isProblemChecked, toggleProblem
       </div>
 
       <div className="problem-list">
+        {interactionError && (
+          <div className="problem-inline-error" role="status">
+            {interactionError}
+          </div>
+        )}
+
         {(problems || []).map((problem) => {
           if (!problem || !problem.id) {
             return null
@@ -40,18 +65,19 @@ export default function ProblemTable({ problems, isProblemChecked, toggleProblem
           const isNoteOpen = expandedNote === problem.id
 
           return (
-            <div key={problem.id}>
+            <div key={problem.id} className={`problem-item ${isNoteOpen ? 'has-open-note' : ''}`}>
               <div
                 className={`problem-row ${checked ? 'is-solved' : ''} ${bookmarked ? 'is-bookmarked' : ''}`}
               >
-                <label className="status-check">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleProblem(problem.id)}
-                  />
+                <button
+                  type="button"
+                  className="status-check"
+                  aria-pressed={checked}
+                  aria-label={checked ? `Mark ${problem.name} unsolved` : `Mark ${problem.name} solved`}
+                  onClick={event => handleProblemToggle(event, problem.id)}
+                >
                   <span>{checked && <Check size={13} />}</span>
-                </label>
+                </button>
 
                 <div className="problem-name-area">
                   <a href={problem.url} target="_blank" rel="noopener noreferrer" className="problem-title">
@@ -90,27 +116,36 @@ export default function ProblemTable({ problems, isProblemChecked, toggleProblem
                 <span className="pattern-label">{problem.pattern}</span>
               </div>
 
-              {/* Expandable note area */}
               {isNoteOpen && (
-                <div className="note-row">
-                  <div className="note-area">
-                    <textarea
-                      className="note-input"
-                      value={noteText}
-                      onChange={(e) => handleNoteChange(problem.id, e.target.value)}
-                      placeholder="Write your notes here... (approach, edge cases, key insight)"
-                      rows={3}
-                      autoFocus
-                    />
-                    <div className="note-footer">
-                      <span className="note-chars">{noteText.length} chars</span>
-                      <button className="note-close" onClick={() => setExpandedNote(null)}>
-                        <X size={12} />
-                        Close
-                      </button>
+                <section
+                  className="note-bubble"
+                  role="dialog"
+                  aria-label={`Notes for ${problem.name}`}
+                >
+                  <div className="note-bubble-head">
+                    <div>
+                      <p className="note-eyebrow">Problem note</p>
+                      <h3>{problem.name}</h3>
                     </div>
+                    <button className="note-bubble-close" onClick={() => setExpandedNote(null)} aria-label="Close note">
+                      <X size={15} />
+                    </button>
                   </div>
-                </div>
+
+                  <textarea
+                    className="note-bubble-input"
+                    value={noteText}
+                    onChange={event => handleNoteChange(problem.id, event.target.value)}
+                    placeholder="Capture the trick, edge case, or mistake you want to remember..."
+                    rows={4}
+                    autoFocus
+                  />
+
+                  <div className="note-bubble-footer">
+                    <span>{noteText.length} chars</span>
+                    <button type="button" onClick={() => setExpandedNote(null)}>Done</button>
+                  </div>
+                </section>
               )}
             </div>
           )
@@ -123,6 +158,7 @@ export default function ProblemTable({ problems, isProblemChecked, toggleProblem
           </div>
         )}
       </div>
+
     </div>
   )
 }

@@ -12,11 +12,40 @@ function saveJSON(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)) } catch { /* ignore */ }
 }
 
+function normalizeMap(value, valueGuard = Boolean) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+
+  return Object.entries(value).reduce((acc, [key, val]) => {
+    if (typeof key === 'string' && key && valueGuard(val)) {
+      acc[key] = val
+    }
+    return acc
+  }, {})
+}
+
+function normalizeTextMap(value) {
+  return normalizeMap(value, val => typeof val === 'string' && val.trim().length > 0)
+}
+
+function buildProfilePayload({ userId, username, stats, tracker, bookmarks }) {
+  return {
+    id: userId,
+    username,
+    total_solved: stats.totalSolved,
+    chapter_progress: stats.chapterStats,
+    difficulty_breakdown: stats.difficultyBreakdown,
+    solved_problems: stats.solvedIds,
+    bookmarked_problems: Object.keys(bookmarks),
+    tracker_progress: tracker,
+    last_active: new Date().toISOString()
+  }
+}
+
 export function useProgress() {
-  const [problems, setProblems] = useState(() => loadJSON('dsa-problems', {}))
-  const [tracker, setTracker] = useState(() => loadJSON('dsa-tracker', {}))
-  const [bookmarks, setBookmarks] = useState(() => loadJSON('dsa-bookmarks', {}))
-  const [notes, setNotes] = useState(() => loadJSON('dsa-notes', {}))
+  const [problems, setProblems] = useState(() => normalizeMap(loadJSON('dsa-problems', {}), Boolean))
+  const [tracker, setTracker] = useState(() => normalizeMap(loadJSON('dsa-tracker', {}), Boolean))
+  const [bookmarks, setBookmarks] = useState(() => normalizeMap(loadJSON('dsa-bookmarks', {}), Boolean))
+  const [notes, setNotes] = useState(() => normalizeTextMap(loadJSON('dsa-notes', {})))
 
   // Ensure the user has a unique ID for community tracking
   const [userId, setUserId] = useState(() => {
@@ -42,8 +71,14 @@ export function useProgress() {
   })
 
   const toggleProblem = useCallback((id) => {
+    if (!id) return
     setProblems(prev => {
-      const next = { ...prev, [id]: !prev[id] }
+      const next = normalizeMap(prev, Boolean)
+      if (next[id]) {
+        delete next[id]
+      } else {
+        next[id] = true
+      }
       saveJSON('dsa-problems', next)
       return next
     })
@@ -52,26 +87,37 @@ export function useProgress() {
   const toggleTracker = useCallback((chId, type) => {
     const key = `${chId}-${type}`
     setTracker(prev => {
-      const next = { ...prev, [key]: !prev[key] }
+      const next = normalizeMap(prev, Boolean)
+      if (next[key]) {
+        delete next[key]
+      } else {
+        next[key] = true
+      }
       saveJSON('dsa-tracker', next)
       return next
     })
   }, [])
 
   const toggleBookmark = useCallback((id) => {
+    if (!id) return
     setBookmarks(prev => {
-      const next = { ...prev, [id]: !prev[id] }
-      // Clean up false values
-      if (!next[id]) delete next[id]
+      const next = normalizeMap(prev, Boolean)
+      if (next[id]) {
+        delete next[id]
+      } else {
+        next[id] = true
+      }
       saveJSON('dsa-bookmarks', next)
       return next
     })
   }, [])
 
   const setNote = useCallback((id, text) => {
+    if (!id) return
     setNotes(prev => {
-      const next = { ...prev }
-      if (text.trim()) {
+      const next = normalizeTextMap(prev)
+      const nextText = String(text || '').trim()
+      if (nextText) {
         next[id] = text
       } else {
         delete next[id]
@@ -132,30 +178,34 @@ export function useProgress() {
   syncDataRef.current = { userId, username, stats, tracker, bookmarks }
 
   // Sync to Supabase in the background (debounced)
+  const syncNow = useCallback(async () => {
+    const { userId: uid, username: uname, stats: s, tracker: t, bookmarks: b } = syncDataRef.current
+    try {
+      if (!supabase || !uid) return { ok: false, skipped: true }
+      const { error } = await supabase
+        .from('community_profiles')
+        .upsert(buildProfilePayload({
+          userId: uid,
+          username: uname,
+          stats: s,
+          tracker: t,
+          bookmarks: b
+        }), { onConflict: 'id' })
+
+      if (error) throw error
+      return { ok: true }
+    } catch (err) {
+      console.error('Failed to sync to Supabase:', err)
+      return { ok: false, error: err }
+    }
+  }, [])
+
   useEffect(() => {
     const timer = setTimeout(async () => {
-      const { userId: uid, username: uname, stats: s, tracker: t, bookmarks: b } = syncDataRef.current
-      try {
-        if (!supabase || !uid) return
-        await supabase
-          .from('community_profiles')
-          .upsert({
-            id: uid,
-            username: uname,
-            total_solved: s.totalSolved,
-            chapter_progress: s.chapterStats,
-            difficulty_breakdown: s.difficultyBreakdown,
-            solved_problems: s.solvedIds,
-            bookmarked_problems: Object.keys(b),
-            tracker_progress: t,
-            last_active: new Date().toISOString()
-          }, { onConflict: 'id' })
-      } catch (err) {
-        console.error('Failed to sync to Supabase:', err)
-      }
+      await syncNow()
     }, 2000)
     return () => clearTimeout(timer)
-  }, [problems, tracker, bookmarks, username])
+  }, [problems, tracker, bookmarks, username, syncNow])
 
   const resetAll = useCallback(async () => {
     // Clear localStorage
@@ -194,7 +244,7 @@ export function useProgress() {
     isTrackerChecked, toggleTracker,
     isBookmarked, toggleBookmark,
     getNote, setNote, notes,
-    stats, resetAll,
+    stats, resetAll, syncNow,
     userId, username, setUsername,
   }
 }

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { chapters } from './data/chapters'
 import { useProgress } from './hooks/useProgress'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import TopBar from './components/TopBar'
 import FilterBar from './components/FilterBar'
 import ChapterSidebar from './components/ChapterSidebar'
@@ -10,13 +11,27 @@ import CommunityLeaderboard from './components/CommunityLeaderboard'
 
 const views = ['overview', 'problems', 'tracker']
 
+function WorkspaceFallback({ error, reset }) {
+  return (
+    <div className="workspace-fallback" role="alert">
+      <p className="eyebrow">Workspace recovered</p>
+      <h2>The practice view hit a render issue.</h2>
+      <p>
+        Your saved progress is still intact. Try recovering the view, or switch chapters if a stale browser state caused it.
+      </p>
+      {error?.message && <code>{error.message}</code>}
+      <button type="button" onClick={reset}>Recover workspace</button>
+    </div>
+  )
+}
+
 export default function App() {
   const {
     isProblemChecked, toggleProblem,
     isTrackerChecked, toggleTracker,
     isBookmarked, toggleBookmark,
     getNote, setNote,
-    stats, resetAll,
+    stats, resetAll, syncNow,
     userId, username, setUsername,
   } = useProgress()
 
@@ -42,6 +57,13 @@ export default function App() {
   const activeData = chapters.find(c => c.id === activeChapter) || chapters[0]
   const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length }
 
+  const resetWorkspaceScroll = () => {
+    window.setTimeout(() => {
+      const workspace = document.querySelector('.workspace')
+      workspace?.scrollTo({ top: 0, behavior: 'auto' })
+    }, 0)
+  }
+
   const filteredProblems = useMemo(() => {
     if (!activeData || !activeData.problems) return []
 
@@ -66,6 +88,7 @@ export default function App() {
     setActiveChapter(chapterId)
     setActiveView('overview')
     setShowCommunity(false)
+    resetWorkspaceScroll()
 
     if (window.innerWidth <= 860) {
       setSidebarOpen(false)
@@ -78,19 +101,30 @@ export default function App() {
 
   const scrollToProblems = () => {
     window.setTimeout(() => {
-      const workspace = document.querySelector('.workspace')
-      const problemsView = document.querySelector('.problems-view')
-      if (workspace && problemsView) {
-        const top = problemsView.getBoundingClientRect().top + workspace.scrollTop - workspace.getBoundingClientRect().top - 20
-        workspace.scrollTo({ top, behavior: 'smooth' })
-      }
+      window.requestAnimationFrame(() => {
+        const workspace = document.querySelector('.workspace')
+        const problemsView = document.querySelector('.problems-view')
+
+        if (!workspace || !problemsView) return
+
+        const workspaceRect = workspace.getBoundingClientRect()
+        const targetRect = problemsView.getBoundingClientRect()
+        const targetTop = workspace.scrollTop + targetRect.top - workspaceRect.top - 18
+
+        workspace.scrollTo({
+          top: Math.max(0, targetTop),
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        })
+      })
     }, 0)
   }
 
-  const handleFilterChange = nextFilter => {
+  const handleFilterChange = (nextFilter, options = {}) => {
     setFilter(nextFilter)
     setActiveView('problems')
-    scrollToProblems()
+    if (options.scrollToProblems) {
+      scrollToProblems()
+    }
   }
 
   const scrollChapterList = () => {
@@ -104,7 +138,10 @@ export default function App() {
         stats={stats}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(open => !open)}
-        onToggleCommunity={() => setShowCommunity(!showCommunity)}
+        onToggleCommunity={() => {
+          setShowCommunity(!showCommunity)
+          resetWorkspaceScroll()
+        }}
         isCommunityView={showCommunity}
       />
 
@@ -154,27 +191,33 @@ export default function App() {
               currentUsername={username}
               setUsername={setUsername}
               stats={stats}
+              syncNow={syncNow}
             />
           ) : activeData ? (
-            <ChapterDetail
-              key={activeData.id}
-              chapter={activeData}
-              chapterStats={chapterStats}
-              filter={filter}
-              search={search}
-              activeView={activeView}
-              onViewChange={handleViewChange}
-              onFilter={handleFilterChange}
-              filteredProblems={filteredProblems}
-              isProblemChecked={isProblemChecked}
-              toggleProblem={toggleProblem}
-              isTrackerChecked={isTrackerChecked}
-              toggleTracker={toggleTracker}
-              isBookmarked={isBookmarked}
-              toggleBookmark={toggleBookmark}
-              getNote={getNote}
-              setNote={setNote}
-            />
+            <ErrorBoundary
+              resetKey={`${activeData.id}-${activeView}-${filter}-${search}`}
+              fallback={({ error, reset }) => <WorkspaceFallback error={error} reset={reset} />}
+            >
+              <ChapterDetail
+                key={activeData.id}
+                chapter={activeData}
+                chapterStats={chapterStats}
+                filter={filter}
+                search={search}
+                activeView={activeView}
+                onViewChange={handleViewChange}
+                onFilter={handleFilterChange}
+                filteredProblems={filteredProblems}
+                isProblemChecked={isProblemChecked}
+                toggleProblem={toggleProblem}
+                isTrackerChecked={isTrackerChecked}
+                toggleTracker={toggleTracker}
+                isBookmarked={isBookmarked}
+                toggleBookmark={toggleBookmark}
+                getNote={getNote}
+                setNote={setNote}
+              />
+            </ErrorBoundary>
           ) : null}
         </main>
       </div>

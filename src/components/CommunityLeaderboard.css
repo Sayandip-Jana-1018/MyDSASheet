@@ -1,7 +1,7 @@
 .community-board {
   max-width: 920px;
   margin: 0 auto;
-  padding: clamp(24px, 4vw, 56px);
+  padding: clamp(64px, 7vw, 92px) clamp(24px, 4vw, 56px) clamp(24px, 4vw, 56px);
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -185,6 +185,16 @@
 .share-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 16px 36px color-mix(in srgb, var(--chapter-color) 26%, transparent);
+}
+
+.share-hint {
+  margin: -6px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 /* ── Leaderboard table ── */
@@ -514,6 +524,77 @@
   box-shadow: 0 0 12px color-mix(in srgb, var(--hard-text) 30%, transparent);
 }
 
+/* Difficulty gauges */
+.difficulty-gauge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.difficulty-gauge {
+  --gauge-color: var(--chapter-color);
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--gauge-color) 20%, var(--border));
+  border-radius: 18px;
+  background:
+    radial-gradient(140px 90px at 15% 0%, color-mix(in srgb, var(--gauge-color) 12%, transparent), transparent 72%),
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-canvas) 82%, transparent), color-mix(in srgb, var(--gauge-color) 5%, var(--bg-subtle)));
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--gauge-color) 9%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.difficulty-gauge.easy { --gauge-color: var(--easy-text); }
+.difficulty-gauge.medium { --gauge-color: var(--med-text); }
+.difficulty-gauge.hard { --gauge-color: var(--hard-text); }
+
+.gauge-ring {
+  width: 76px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--bg-canvas) 95%, transparent) 56%, transparent 57%),
+    conic-gradient(from -90deg, var(--gauge-color) var(--gauge-value), color-mix(in srgb, var(--bg-muted) 78%, transparent) 0);
+  box-shadow:
+    inset 0 0 0 8px color-mix(in srgb, var(--bg-canvas) 36%, transparent),
+    0 12px 28px color-mix(in srgb, var(--gauge-color) 18%, transparent);
+}
+
+.gauge-ring span {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.gauge-copy {
+  min-width: 0;
+}
+
+.gauge-copy strong {
+  display: block;
+  color: var(--gauge-color);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.gauge-copy span {
+  display: block;
+  margin-top: 7px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 850;
+}
+
 /* ── Chapter progress ── */
 .chapter-progress-grid {
   display: flex;
@@ -616,7 +697,7 @@
 
 @media (max-width: 860px) {
   .community-board {
-    padding: 28px 20px;
+    padding: 42px 20px 28px;
     gap: 22px;
   }
 
@@ -647,6 +728,10 @@
     padding: 7px 8px;
   }
 
+  .difficulty-gauge-grid {
+    grid-template-columns: 1fr;
+  }
+
   .col-diff {
     display: none;
   }
@@ -654,12 +739,26 @@
 
 @media (max-width: 500px) {
   .community-board {
-    padding: 20px 14px;
+    padding: 34px 14px 20px;
     gap: 16px;
   }
 
+  .community-hero .hero-content {
+    align-items: center;
+    text-align: center;
+  }
+
+  .community-hero .eyebrow {
+    justify-content: center;
+  }
+
   .community-hero .hero-content h2 {
-    font-size: 26px;
+    font-size: 32px;
+    text-align: center;
+  }
+
+  .community-hero .hero-content > p {
+    text-align: center;
   }
 
   .table-header, .leaderboard-row {
@@ -689,5 +788,14 @@
 
   .user-quick-stats {
     flex-wrap: wrap;
+  }
+
+  .difficulty-gauge {
+    grid-template-columns: 64px minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .gauge-ring {
+    width: 64px;
   }
 }

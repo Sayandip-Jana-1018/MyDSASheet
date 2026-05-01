@@ -30,6 +30,27 @@
 .problem-list {
   max-height: min(64vh, 760px);
   overflow: auto;
+  overflow-anchor: none;
+}
+
+.problem-item {
+  position: relative;
+}
+
+.problem-item.has-open-note {
+  z-index: 5;
+}
+
+.problem-inline-error {
+  margin: 12px 14px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--hard-text) 34%, var(--border));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--hard-text) 8%, var(--bg-subtle));
+  color: var(--hard-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .problem-row {
@@ -77,15 +98,9 @@ html[data-theme="dark"] .problem-row.is-bookmarked {
   height: 34px;
   display: grid;
   place-items: center;
+  border: 0;
+  background: transparent;
   cursor: pointer;
-}
-
-.status-check input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
 }
 
 .status-check span {
@@ -100,7 +115,7 @@ html[data-theme="dark"] .problem-row.is-bookmarked {
   transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out), transform 150ms var(--ease-out);
 }
 
-.status-check input:checked + span {
+.status-check[aria-pressed="true"] span {
   border-color: var(--accent);
   background: var(--bg-inverse);
   transform: scale(1.04);
@@ -209,71 +224,142 @@ html[data-theme="dark"] .bookmark-icon.is-active {
   text-align: center;
 }
 
-/* Note row */
-.note-row {
-  padding: 0 14px 12px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--accent) 3%, var(--bg-subtle));
+.note-bubble {
+  position: absolute;
+  top: 9px;
+  right: 18px;
+  z-index: 12;
+  width: min(390px, calc(100% - 104px));
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 38%, var(--border));
+  border-radius: 24px;
+  background:
+    radial-gradient(220px 140px at 8% 0%, color-mix(in srgb, var(--chapter-color) 30%, transparent), transparent 72%),
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-canvas) 88%, transparent), color-mix(in srgb, var(--chapter-color) 10%, var(--bg-subtle)));
+  box-shadow:
+    0 28px 70px color-mix(in srgb, var(--chapter-color) 24%, transparent),
+    0 20px 42px rgba(0, 0, 0, 0.18),
+    0 8px 0 -4px color-mix(in srgb, var(--chapter-color) 38%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(18px) saturate(150%);
+  overflow: visible;
 }
 
-.note-area {
-  margin-left: 76px;
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--bg-canvas);
+.note-bubble::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  border-left: 1px solid color-mix(in srgb, var(--chapter-color) 38%, var(--border));
+  border-bottom: 1px solid color-mix(in srgb, var(--chapter-color) 38%, var(--border));
+  background: color-mix(in srgb, var(--bg-canvas) 86%, var(--chapter-color));
+  transform: rotate(45deg);
+  box-shadow: -12px 12px 34px color-mix(in srgb, var(--chapter-color) 16%, transparent);
 }
 
-.note-input {
-  width: 100%;
-  min-height: 72px;
-  padding: 12px;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 13px;
-  line-height: 1.5;
-  resize: vertical;
-}
-
-.note-input::placeholder {
-  color: var(--text-muted);
-}
-
-.note-footer {
+.note-bubble-head,
+.note-bubble-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-subtle);
+  gap: 14px;
 }
 
-.note-chars {
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
+.note-bubble-head {
+  padding: 16px 16px 10px;
 }
 
-.note-close {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+.note-eyebrow {
+  margin: 0 0 4px;
+  color: color-mix(in srgb, var(--chapter-color) 70%, var(--text-muted));
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.note-bubble h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 17px;
+  line-height: 1.12;
+}
+
+.note-bubble-close {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-tertiary);
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--bg-canvas) 78%, transparent);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
-.note-close:hover {
+.note-bubble-input {
+  width: calc(100% - 32px);
+  min-height: 116px;
+  margin: 0 16px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 22%, var(--border));
+  border-radius: 17px;
+  outline: 0;
+  resize: vertical;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-canvas) 84%, transparent), color-mix(in srgb, var(--bg-subtle) 72%, transparent));
   color: var(--text-primary);
-  background: var(--bg-muted);
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.note-bubble-input::placeholder {
+  color: var(--text-muted);
+}
+
+.note-bubble-footer {
+  padding: 12px 16px 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.note-bubble-footer button {
+  min-height: 34px;
+  padding: 0 15px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 40%, var(--border));
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 20% 12%, rgba(255,255,255,0.24), transparent 32%),
+    linear-gradient(145deg, var(--bg-inverse), color-mix(in srgb, var(--chapter-color) 46%, var(--bg-inverse)));
+  color: var(--text-inverse);
+  cursor: pointer;
+  font-weight: 900;
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--chapter-color) 18%, transparent);
+}
+
+html[data-theme="dark"] .note-bubble {
+  background:
+    radial-gradient(260px 150px at 12% 0%, color-mix(in srgb, var(--chapter-color) 24%, transparent), transparent 70%),
+    linear-gradient(145deg, color-mix(in srgb, #111827 78%, var(--chapter-color)), color-mix(in srgb, #080a0f 88%, var(--chapter-color)));
+  box-shadow:
+    0 28px 80px color-mix(in srgb, var(--chapter-color) 18%, transparent),
+    0 18px 46px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .note-bubble::before {
+  background: color-mix(in srgb, #111827 76%, var(--chapter-color));
+}
+
+html[data-theme="dark"] .note-bubble-input {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, #111827 78%, var(--chapter-color)), color-mix(in srgb, #0d111a 86%, var(--chapter-color)));
 }
 
 .difficulty-chip {
@@ -375,11 +461,29 @@ html[data-theme="dark"] .bookmark-icon.is-active {
     line-height: 1.35;
   }
 
-  .note-area {
-    margin-left: 0;
+  .note-bubble {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: calc(100% - 28px);
+    margin: -2px 14px 12px 52px;
+    border-radius: 22px;
+    transform: none;
   }
 
-  .note-row {
-    padding: 0 14px 12px;
+  .note-bubble::before {
+    top: -8px;
+    left: 24px;
+    border: 0;
+    border-left: 1px solid color-mix(in srgb, var(--chapter-color) 38%, var(--border));
+    border-top: 1px solid color-mix(in srgb, var(--chapter-color) 38%, var(--border));
+  }
+
+  .note-bubble h3 {
+    font-size: 16px;
+  }
+
+  .note-bubble-input {
+    min-height: 126px;
   }
 }

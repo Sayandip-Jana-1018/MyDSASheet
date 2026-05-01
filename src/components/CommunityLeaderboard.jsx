@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Users, Share2, Copy, Check, BarChart3, BookOpen, Target, ArrowLeft } from 'lucide-react'
+import { Trophy, Users, Share2, Check, BarChart3, BookOpen, Target, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { chapters } from '../data/chapters'
 import './CommunityLeaderboard.css'
@@ -12,6 +12,11 @@ function FriendProfile({ friendId, onBack }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        if (!supabase) {
+          setError('Community sharing is not configured for this build.')
+          return
+        }
+
         const { data, error: fetchErr } = await supabase
           .from('community_profiles')
           .select('*')
@@ -51,6 +56,30 @@ function FriendProfile({ friendId, onBack }) {
       else if (p.difficulty === 'Hard') totalHard++
     })
   })
+
+  const difficultyGauges = [
+    {
+      key: 'easy',
+      label: 'Easy',
+      done: diff.easy || 0,
+      total: totalEasy,
+      percent: totalEasy ? Math.round(((diff.easy || 0) / totalEasy) * 100) : 0,
+    },
+    {
+      key: 'medium',
+      label: 'Medium',
+      done: diff.medium || 0,
+      total: totalMed,
+      percent: totalMed ? Math.round(((diff.medium || 0) / totalMed) * 100) : 0,
+    },
+    {
+      key: 'hard',
+      label: 'Hard',
+      done: diff.hard || 0,
+      total: totalHard,
+      percent: totalHard ? Math.round(((diff.hard || 0) / totalHard) * 100) : 0,
+    },
+  ]
 
   // Time ago
   const timeAgo = (dateStr) => {
@@ -99,34 +128,22 @@ function FriendProfile({ friendId, onBack }) {
       {/* Difficulty breakdown */}
       <div className="profile-section">
         <h3><BarChart3 size={16} /> Difficulty Breakdown</h3>
-        <div className="diff-bars">
-          <div className="diff-bar-item">
-            <div className="diff-label">
-              <span className="diff-name easy-label">Easy</span>
-              <span className="diff-count">{diff.easy}/{totalEasy}</span>
-            </div>
-            <div className="diff-track">
-              <div className="diff-fill easy-fill" style={{ width: `${totalEasy ? (diff.easy / totalEasy * 100) : 0}%` }} />
-            </div>
-          </div>
-          <div className="diff-bar-item">
-            <div className="diff-label">
-              <span className="diff-name med-label">Medium</span>
-              <span className="diff-count">{diff.medium}/{totalMed}</span>
-            </div>
-            <div className="diff-track">
-              <div className="diff-fill med-fill" style={{ width: `${totalMed ? (diff.medium / totalMed * 100) : 0}%` }} />
-            </div>
-          </div>
-          <div className="diff-bar-item">
-            <div className="diff-label">
-              <span className="diff-name hard-label">Hard</span>
-              <span className="diff-count">{diff.hard}/{totalHard}</span>
-            </div>
-            <div className="diff-track">
-              <div className="diff-fill hard-fill" style={{ width: `${totalHard ? (diff.hard / totalHard * 100) : 0}%` }} />
-            </div>
-          </div>
+        <div className="difficulty-gauge-grid">
+          {difficultyGauges.map(item => (
+            <article
+              key={item.key}
+              className={`difficulty-gauge ${item.key}`}
+              style={{ '--gauge-value': `${item.percent}%` }}
+            >
+              <div className="gauge-ring">
+                <span>{item.percent}%</span>
+              </div>
+              <div className="gauge-copy">
+                <strong>{item.label}</strong>
+                <span>{item.done}/{item.total}</span>
+              </div>
+            </article>
+          ))}
         </div>
       </div>
 
@@ -166,10 +183,11 @@ function FriendProfile({ friendId, onBack }) {
   )
 }
 
-export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats }) {
+export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, syncNow }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
-  const [copied, setCopied] = useState(false)
+  const [copyState, setCopyState] = useState('idle')
+  const [shareHint, setShareHint] = useState('')
   const [isEditingName, setIsEditingName] = useState(false)
   const [tempName, setTempName] = useState(currentUsername)
   const [viewingFriend, setViewingFriend] = useState(null)
@@ -189,6 +207,11 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
 
   const fetchLeaderboard = async () => {
     try {
+      if (!supabase) {
+        setLeaderboard([])
+        return
+      }
+
       const { data, error } = await supabase
         .from('community_profiles')
         .select('id, username, total_solved, last_active, difficulty_breakdown')
@@ -204,12 +227,53 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
     }
   }
 
-  const handleCopyLink = () => {
+  const copyText = async (text) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const copied = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return copied
+  }
+
+  const handleCopyLink = async () => {
     const url = new URL(window.location.origin + window.location.pathname)
     url.searchParams.set('friend', currentUserId)
-    navigator.clipboard.writeText(url.toString())
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    const shareUrl = url.toString()
+
+    setCopyState('syncing')
+    setShareHint('')
+
+    const syncResult = syncNow ? await syncNow() : { skipped: true }
+
+    try {
+      const copied = await copyText(shareUrl)
+      if (!copied) throw new Error('Clipboard copy failed')
+      setCopyState('copied')
+      setShareHint(syncResult?.ok
+        ? 'Latest stats synced before copying.'
+        : syncResult?.skipped
+          ? 'Link copied. Community sync is not configured.'
+          : 'Link copied. Stats sync will retry in the background.')
+    } catch (err) {
+      console.error('Failed to copy share link:', err)
+      setCopyState('manual')
+      setShareHint(`Copy manually: ${shareUrl}`)
+    }
+
+    setTimeout(() => {
+      setCopyState('idle')
+      setShareHint('')
+    }, 3600)
   }
 
   const handleSaveName = () => {
@@ -244,7 +308,10 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
           <div className="eyebrow">
             <Users size={16} /> Community
           </div>
-          <h2>Global Leaderboard</h2>
+          <h2>
+            Global<br />
+            Leaderboard
+          </h2>
           <p>See how you stack up against other developers.</p>
         </div>
 
@@ -279,9 +346,18 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
             <span>{stats?.bookmarkCount || 0} saved</span>
           </div>
           <button className="share-btn" onClick={handleCopyLink}>
-            {copied ? <Check size={16} /> : <Share2 size={16} />}
-            <span>{copied ? 'Copied Link!' : 'Share My Progress'}</span>
+            {copyState === 'copied' ? <Check size={16} /> : <Share2 size={16} />}
+            <span>
+              {copyState === 'syncing'
+                ? 'Syncing Stats...'
+                : copyState === 'copied'
+                  ? 'Copied Link!'
+                  : copyState === 'manual'
+                    ? 'Copy Link Manually'
+                    : 'Share My Progress'}
+            </span>
           </button>
+          {shareHint && <p className="share-hint">{shareHint}</p>}
         </div>
       </header>
 
