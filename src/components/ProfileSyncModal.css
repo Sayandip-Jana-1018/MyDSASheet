@@ -55,6 +55,32 @@
   cursor: pointer;
 }
 
+.profile-theme-toggle {
+  position: absolute;
+  top: 18px;
+  right: 66px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 22%, var(--border));
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 26% 18%, color-mix(in srgb, var(--chapter-color) 16%, transparent), transparent 36%),
+    color-mix(in srgb, var(--bg-canvas) 84%, transparent);
+  color: var(--text-secondary);
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--chapter-color) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  cursor: pointer;
+}
+
+.profile-theme-toggle:hover {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--chapter-color) 38%, var(--border-strong));
+  background: color-mix(in srgb, var(--chapter-color) 8%, var(--bg-muted));
+}
+
 .profile-back {
   position: absolute;
   top: 18px;
@@ -581,6 +607,14 @@
   .profile-close {
     top: 14px;
     right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+  }
+
+  .profile-theme-toggle {
+    top: 14px;
+    right: 56px;
     width: 36px;
     height: 36px;
     border-radius: 14px;

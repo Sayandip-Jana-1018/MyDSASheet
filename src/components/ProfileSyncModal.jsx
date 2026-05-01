@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Camera, Check, Copy, KeyRound, Link2, Lock, LogIn, RotateCcw, Share2, Sparkles, Trash2, UserRound, X } from 'lucide-react'
+import { Camera, Check, Copy, KeyRound, Link2, Lock, LogIn, Moon, RotateCcw, Share2, Sparkles, Sun, Trash2, UserRound, X } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
 import './ProfileSyncModal.css'
 
 function buildSyncLink(syncCode) {
@@ -58,6 +59,7 @@ export default function ProfileSyncModal({
   onContinuePrivate,
   onStartFresh,
 }) {
+  const { theme, toggleTheme } = useTheme()
   const [mode, setMode] = useState(initialMode)
   const [name, setName] = useState(profile?.username && profile.username !== 'Private pilot' ? profile.username : '')
   const [code, setCode] = useState('')
@@ -112,9 +114,15 @@ export default function ProfileSyncModal({
     setBusy(false)
     if (result?.ok) {
       setMode('manage')
-      setFeedback(leaderboardOptIn ? 'Profile published.' : 'Private sync profile created.')
+      setFeedback(result?.localOnly
+        ? 'Profile saved here. Add Supabase setup to sync publicly.'
+        : leaderboardOptIn
+          ? 'Profile published.'
+          : 'Private sync profile created.')
     } else if (!name.trim()) {
       setFeedback('Enter a display name.')
+    } else {
+      setFeedback(result?.error?.message || 'Could not create profile yet.')
     }
   }
 
@@ -187,6 +195,9 @@ export default function ProfileSyncModal({
       <section className={`profile-modal profile-modal-${mode}`} role="dialog" aria-modal="true" aria-label="Profile sync">
         <button className="profile-close" type="button" onClick={onClose} aria-label="Close profile sync">
           <X size={17} />
+        </button>
+        <button className="profile-theme-toggle" type="button" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
         </button>
         {profile?.claimed && mode === 'manage' && (
           <button className="profile-back" type="button" onClick={startFresh} aria-label="Back to guest mode">

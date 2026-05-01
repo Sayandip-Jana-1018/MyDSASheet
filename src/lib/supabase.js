@@ -9,7 +9,7 @@ try {
   if (supabaseUrl && supabaseAnonKey) {
     supabase = createClient(supabaseUrl, supabaseAnonKey)
   } else {
-    console.warn('[Supabase] Missing env vars — community features disabled')
+    console.warn('[Supabase] Missing env vars - community features disabled')
   }
 } catch (err) {
   console.error('[Supabase] Failed to initialize client:', err)

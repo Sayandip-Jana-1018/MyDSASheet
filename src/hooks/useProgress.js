@@ -99,19 +99,6 @@ function buildProfilePayload({ stats, tracker, bookmarks }) {
   }
 }
 
-function dataUrlToBlob(dataUrl) {
-  const [metadata, payload] = String(dataUrl || '').split(',')
-  const mimeType = metadata?.match(/data:([^;]+);base64/)?.[1] || 'image/webp'
-  const bytes = atob(payload || '')
-  const buffer = new Uint8Array(bytes.length)
-
-  for (let i = 0; i < bytes.length; i += 1) {
-    buffer[i] = bytes.charCodeAt(i)
-  }
-
-  return new Blob([buffer], { type: mimeType })
-}
-
 function payloadToLocalProgress(profile) {
   const solved = Array.isArray(profile?.solved_problems) ? profile.solved_problems : []
   const saved = Array.isArray(profile?.bookmarked_problems) ? profile.bookmarked_problems : []
@@ -365,7 +352,7 @@ export function useProgress() {
     } catch (err) {
       console.error('Failed to claim Supabase profile:', err)
       setSyncStatus({ state: 'error', message: 'Profile saved locally. Run the new Supabase schema to publish.' })
-      return { ok: false, profile: nextProfile, error: err }
+      return { ok: true, profile: nextProfile, localOnly: true, error: err }
     }
   }, [bookmarks, claimRemoteProfile, persistProfile, profile, stats, tracker])
 
@@ -439,7 +426,7 @@ export function useProgress() {
     if (!displayName) return { ok: false }
     const nextProfile = persistProfile({ ...profile, username: displayName, dismissedOnboarding: true })
     const syncResult = await syncNow(nextProfile)
-    return { ok: syncResult?.ok !== false, profile: nextProfile, syncResult }
+    return { ok: true, profile: nextProfile, syncResult }
   }, [persistProfile, profile, syncNow])
 
   const setLeaderboardOptIn = useCallback((value) => {
@@ -454,58 +441,35 @@ export function useProgress() {
     }
 
     try {
-      if (!supabase) throw new Error('Supabase is not configured')
+      if (!supabase) {
+        throw new Error('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel, then redeploy.')
+      }
       setSyncStatus({ state: 'syncing', message: avatarDataUrl ? 'Uploading avatar...' : 'Removing avatar...' })
 
       const { stats: s, tracker: t, bookmarks: b } = syncDataRef.current
       const ensuredProfile = await claimRemoteProfile(profile, buildProfilePayload({ stats: s, tracker: t, bookmarks: b }))
 
-      let avatarUrl = ''
-      let avatarPath = ''
-
-      if (avatarDataUrl) {
-        const avatarBlob = dataUrlToBlob(avatarDataUrl)
-        avatarPath = `${ensuredProfile.id}/avatar.webp`
-
-        const { error: uploadError } = await supabase.storage
-          .from('profile-avatars')
-          .upload(avatarPath, avatarBlob, {
-            contentType: avatarBlob.type || 'image/webp',
-            upsert: true,
-          })
-
-        if (uploadError) throw uploadError
-
-        const { data: publicData } = supabase.storage
-          .from('profile-avatars')
-          .getPublicUrl(avatarPath)
-
-        avatarUrl = publicData?.publicUrl ? `${publicData.publicUrl}?v=${Date.now()}` : ''
-      } else if (ensuredProfile.avatarPath) {
-        await supabase.storage.from('profile-avatars').remove([ensuredProfile.avatarPath])
-      }
-
-      const { data, error } = await supabase.rpc('set_community_profile_avatar', {
-        p_id: ensuredProfile.id,
-        p_sync_code: ensuredProfile.syncCode,
-        p_avatar_url: avatarUrl,
-        p_avatar_path: avatarPath,
+      const { data, error } = await supabase.functions.invoke('upload-profile-avatar', {
+        body: {
+          profileId: ensuredProfile.id,
+          syncCode: ensuredProfile.syncCode,
+          avatarDataUrl,
+        },
       })
 
       if (error) throw error
-      const remote = Array.isArray(data) ? data[0] : data
 
       const nextProfile = persistProfile({
         ...ensuredProfile,
-        avatarUrl: remote?.avatar_url || '',
-        avatarPath: remote?.avatar_path || '',
+        avatarUrl: data?.avatarUrl || '',
+        avatarPath: data?.avatarPath || '',
         dismissedOnboarding: true,
       })
 
       setSyncStatus({ state: 'synced', message: nextProfile.avatarUrl ? 'Avatar updated.' : 'Avatar removed.' })
       return { ok: true, profile: nextProfile }
     } catch (err) {
-      setSyncStatus({ state: 'error', message: 'Avatar upload failed. Run the latest schema and check the bucket.' })
+      setSyncStatus({ state: 'error', message: 'Avatar upload failed. Check env vars, schema, bucket, and Edge Function deploy.' })
       return { ok: false, error: err }
     }
   }, [claimRemoteProfile, persistProfile, profile])

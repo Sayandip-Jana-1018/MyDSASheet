@@ -254,13 +254,13 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
 
   const handleCopyLink = async () => {
     if (!profile?.claimed) {
-      setShareHint('Claim a profile first, then your progress can be shared across devices.')
+      setShareHint('Claim a profile first, then you can copy a public profile link.')
       onOpenProfile?.()
       return
     }
 
     if (!profile?.leaderboardOptIn) {
-      setShareHint('Turn on leaderboard visibility in your profile before sharing public stats.')
+      setShareHint('Turn on leaderboard visibility before copying a public profile link.')
       onOpenProfile?.()
       return
     }
@@ -279,10 +279,10 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
       if (!copied) throw new Error('Clipboard copy failed')
       setCopyState('copied')
       setShareHint(syncResult?.ok
-        ? 'Latest stats synced before copying.'
+        ? 'Latest stats synced before copying the profile link.'
         : syncResult?.skipped
-          ? 'Link copied. Community sync is not configured.'
-          : 'Link copied. Stats sync will retry in the background.')
+          ? 'Profile link copied. Community sync is not configured.'
+          : 'Profile link copied. Stats sync will retry in the background.')
     } catch (err) {
       console.error('Failed to copy share link:', err)
       setCopyState('manual')
@@ -372,16 +372,16 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
             {copyState === 'copied' ? <Check size={16} /> : <Share2 size={16} />}
             <span>
               {!profile?.claimed
-                ? 'Claim Profile To Share'
+                ? 'Claim Profile First'
                 : !profile?.leaderboardOptIn
-                  ? 'Make Public To Share'
+                  ? 'Make Public First'
                   : copyState === 'syncing'
                 ? 'Syncing Stats...'
                 : copyState === 'copied'
                   ? 'Copied Link!'
                   : copyState === 'manual'
                     ? 'Copy Link Manually'
-                    : 'Share My Progress'}
+                    : 'Copy Profile Link'}
             </span>
           </button>
           {shareHint && <p className="share-hint">{shareHint}</p>}

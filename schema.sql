@@ -2,6 +2,8 @@
 -- Paste and run this entire file in the Supabase SQL Editor.
 -- No Supabase Auth required: users claim a profile with a private sync code.
 
+create extension if not exists pgcrypto;
+
 create table if not exists public.community_profiles (
   id uuid primary key,
   username text not null default 'DSA Pilot',
@@ -13,6 +15,7 @@ create table if not exists public.community_profiles (
   tracker_progress jsonb not null default '{}'::jsonb,
   avatar_url text,
   avatar_path text,
+  avatar_updated_at timestamp with time zone,
   leaderboard_opt_in boolean not null default false,
   profile_claimed boolean not null default false,
   sync_code_hash text,
@@ -27,6 +30,7 @@ alter table public.community_profiles add column if not exists bookmarked_proble
 alter table public.community_profiles add column if not exists tracker_progress jsonb not null default '{}'::jsonb;
 alter table public.community_profiles add column if not exists avatar_url text;
 alter table public.community_profiles add column if not exists avatar_path text;
+alter table public.community_profiles add column if not exists avatar_updated_at timestamp with time zone;
 alter table public.community_profiles add column if not exists leaderboard_opt_in boolean not null default false;
 alter table public.community_profiles add column if not exists profile_claimed boolean not null default false;
 alter table public.community_profiles add column if not exists sync_code_hash text;
@@ -59,7 +63,7 @@ returns text
 language sql
 immutable
 as $$
-  select md5(upper(trim(coalesce(p_sync_code, ''))))
+  select encode(digest(upper(trim(coalesce(p_sync_code, ''))), 'sha256'), 'hex')
 $$;
 
 create or replace function public.apply_profile_payload(
@@ -226,6 +230,10 @@ begin
   set
     avatar_url = nullif(trim(coalesce(p_avatar_url, '')), ''),
     avatar_path = nullif(trim(coalesce(p_avatar_path, '')), ''),
+    avatar_updated_at = case
+      when nullif(trim(coalesce(p_avatar_url, '')), '') is null then null
+      else timezone('utc'::text, now())
+    end,
     last_active = timezone('utc'::text, now())
   where id = p_id;
 
@@ -237,7 +245,9 @@ begin
 end;
 $$;
 
-create or replace function public.restore_community_profile(p_sync_code text)
+drop function if exists public.restore_community_profile(text);
+
+create function public.restore_community_profile(p_sync_code text)
 returns table (
   id uuid,
   username text,
@@ -249,6 +259,7 @@ returns table (
   tracker_progress jsonb,
   avatar_url text,
   avatar_path text,
+  avatar_updated_at timestamp with time zone,
   leaderboard_opt_in boolean,
   last_active timestamp with time zone
 )
@@ -267,6 +278,7 @@ as $$
     cp.tracker_progress,
     cp.avatar_url,
     cp.avatar_path,
+    cp.avatar_updated_at,
     cp.leaderboard_opt_in,
     cp.last_active
   from public.community_profiles cp
@@ -296,22 +308,6 @@ drop policy if exists "Public profile avatar deletes." on storage.objects;
 create policy "Public profile avatar reads."
   on storage.objects
   for select
-  using (bucket_id = 'profile-avatars');
-
-create policy "Public profile avatar uploads."
-  on storage.objects
-  for insert
-  with check (bucket_id = 'profile-avatars');
-
-create policy "Public profile avatar updates."
-  on storage.objects
-  for update
-  using (bucket_id = 'profile-avatars')
-  with check (bucket_id = 'profile-avatars');
-
-create policy "Public profile avatar deletes."
-  on storage.objects
-  for delete
   using (bucket_id = 'profile-avatars');
 
 grant execute on function public.claim_community_profile(uuid, text, text, boolean, jsonb) to anon, authenticated;
