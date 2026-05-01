@@ -74,7 +74,7 @@
 .user-avatar {
   width: 52px;
   height: 52px;
-  border-radius: 17px;
+  border-radius: 50%;
   background:
     radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 40%),
     linear-gradient(135deg, var(--chapter-color, #315cf6), #7c3aed);
@@ -290,7 +290,7 @@
   place-items: center;
   flex: 0 0 34px;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 50%;
   background:
     radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 40%),
     linear-gradient(135deg, var(--chapter-color, #315cf6), #7c3aed);
@@ -429,7 +429,7 @@
 .profile-avatar-lg {
   width: 88px;
   height: 88px;
-  border-radius: 24px;
+  border-radius: 50%;
   background:
     radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 40%),
     linear-gradient(135deg, var(--chapter-color, #315cf6), #7c3aed);
@@ -830,7 +830,7 @@
   .profile-avatar-lg {
     width: 64px;
     height: 64px;
-    border-radius: 18px;
+    border-radius: 50%;
     font-size: 28px;
   }
 
