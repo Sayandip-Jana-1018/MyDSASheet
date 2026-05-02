@@ -40,6 +40,10 @@
   padding: clamp(18px, 2.4vw, 28px);
 }
 
+.profile-modal-claim {
+  width: min(820px, calc(100vw - 28px));
+}
+
 .profile-close {
   position: absolute;
   top: 18px;
@@ -189,33 +193,48 @@
 }
 
 .profile-choice-grid button {
-  min-height: 148px;
+  min-height: 172px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 16px;
+  gap: 10px;
+  padding: 22px;
   border-radius: 22px;
   color: var(--text-secondary);
   text-align: center;
   cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out), background 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+
+.profile-choice-grid button:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--chapter-color) 42%, var(--border-strong));
+  background:
+    radial-gradient(220px 120px at 30% 0%, color-mix(in srgb, var(--chapter-color) 16%, transparent), transparent 70%),
+    color-mix(in srgb, var(--bg-canvas) 88%, transparent);
+  box-shadow:
+    0 16px 38px color-mix(in srgb, var(--chapter-color) 13%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .profile-choice-grid button svg {
   color: var(--accent);
+  width: 24px;
+  height: 24px;
 }
 
 .profile-choice-grid strong {
   color: var(--text-primary);
-  font-size: 17px;
+  font-size: 20px;
   line-height: 1.1;
 }
 
 .profile-choice-grid span {
   color: var(--text-tertiary);
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.45;
+  max-width: 260px;
 }
 
 .profile-form {
@@ -383,6 +402,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
+.avatar-panel-claim {
+  max-width: 620px;
+  width: 100%;
+  justify-self: center;
+}
+
 .avatar-preview {
   width: 116px;
   height: 116px;
@@ -538,21 +563,104 @@
 }
 
 .publish-toggle {
-  min-height: 42px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  padding: 0 13px;
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: color-mix(in srgb, var(--bg-subtle) 72%, transparent);
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 16%, var(--border));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, white 18%, transparent), transparent 34%),
+    color-mix(in srgb, var(--bg-subtle) 72%, transparent);
   color: var(--text-secondary);
   font-weight: 850;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: border-color 160ms var(--ease-out), background 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+
+.publish-toggle:hover,
+.publish-toggle.is-on {
+  border-color: color-mix(in srgb, var(--chapter-color) 42%, var(--border-strong));
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, white 22%, transparent), transparent 34%),
+    linear-gradient(145deg, color-mix(in srgb, var(--chapter-color) 13%, var(--bg-canvas)), color-mix(in srgb, var(--chapter-color) 7%, var(--bg-subtle)));
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--chapter-color) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
 .publish-toggle input {
-  accent-color: var(--chapter-color);
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 22%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-muted) 84%, transparent);
+  position: relative;
+  cursor: pointer;
+  transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out);
+}
+
+.publish-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg-canvas);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms var(--ease-out);
+}
+
+.publish-toggle input:checked {
+  border-color: color-mix(in srgb, var(--chapter-color) 66%, var(--border-strong));
+  background: linear-gradient(135deg, var(--chapter-color), color-mix(in srgb, var(--chapter-color) 58%, #7c3aed));
+}
+
+.publish-toggle input:checked::after {
+  transform: translateX(14px);
+}
+
+.publish-toggle > span {
+  min-width: 0;
+}
+
+.publish-toggle > span:not(:has(strong)) {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.publish-toggle-large {
+  width: min(620px, 100%);
+  justify-self: center;
+  align-items: center;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.publish-toggle-large > span {
+  display: grid;
+  gap: 3px;
+}
+
+.publish-toggle-large strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.publish-toggle-large em {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  line-height: 1.35;
 }
 
 .profile-modal-footer {
@@ -588,7 +696,7 @@
   }
 
   .profile-choice-grid button {
-    min-height: 0;
+    min-height: 132px;
   }
 }
 
@@ -738,6 +846,12 @@
     min-height: 42px;
     border-radius: 15px;
     font-size: 12px;
+  }
+
+  .publish-toggle-large {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
   }
 
   .avatar-upload,

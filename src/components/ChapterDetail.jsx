@@ -1,4 +1,5 @@
-import { BookOpen, CheckCircle2, Compass, ExternalLink, Layers3, Lightbulb, ListChecks, Route, ShieldAlert, Target, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { BarChart3, BookOpen, CalendarDays, CheckCircle2, ExternalLink, Flame, Layers3, ListChecks, Route, Target, TrendingUp } from 'lucide-react'
 import ProblemTable from './ProblemTable'
 import TrackerBox from './TrackerBox'
 import './ChapterDetail.css'
@@ -17,80 +18,6 @@ const cleanText = value => String(value)
   .replaceAll('â€\u009d', '"')
   .replaceAll('Â²', '^2')
   .replaceAll('Â', '')
-
-const chapterPlaybooks = {
-  arrays: {
-    signal: 'Look for contiguous ranges, index movement, sorted input, or repeated scans that can collapse into one pass.',
-    drill: 'Practice prefix sums, two pointers, Kadane, and in-place swaps until the state update feels automatic.',
-    trap: 'Most misses come from off-by-one windows, overwritten values, and forgetting empty or single-element arrays.',
-  },
-  strings: {
-    signal: 'Watch for character frequency, substring windows, palindrome symmetry, and normalization before comparison.',
-    drill: 'Move between hash maps, sliding windows, tries, and two-pointer scans depending on whether order matters.',
-    trap: 'Unicode, case folding, duplicate characters, and inclusive substring bounds can quietly break clean solutions.',
-  },
-  'linked-list': {
-    signal: 'If the problem says cycle, kth node, reverse, merge, or reorder, think pointer choreography first.',
-    drill: 'Draw dummy nodes and prev-current-next transitions before writing code.',
-    trap: 'Null checks and losing the next pointer are the common failure points.',
-  },
-  stack: {
-    signal: 'Nested structure, nearest greater/smaller, undo history, or expression parsing usually points to stack.',
-    drill: 'Train monotonic stacks and bracket/state validation until pop conditions are crisp.',
-    trap: 'Wrong comparison direction in monotonic stacks changes the whole answer.',
-  },
-  queue: {
-    signal: 'Level-order traversal, streaming order, rate limiting, and shortest unweighted paths usually want queues.',
-    drill: 'Practice BFS layers and deque patterns for window maximums.',
-    trap: 'Mixing current layer and next layer counts creates distance bugs.',
-  },
-  hashing: {
-    signal: 'When lookup, frequency, grouping, or complement search appears, reach for maps and sets.',
-    drill: 'Practice turning O(n^2) pair checks into one-pass complement checks.',
-    trap: 'Key shape matters: collisions in your own composite keys cause false matches.',
-  },
-  recursion: {
-    signal: 'Self-similar subproblems, tree traversal, and divide-and-conquer are recursion territory.',
-    drill: 'Define base case, work done at this node, and returned meaning before coding.',
-    trap: 'Unclear return contracts make recursive solutions collapse quickly.',
-  },
-  backtracking: {
-    signal: 'Generate all valid combinations, paths, partitions, or placements with constraints.',
-    drill: 'Choose, explore, unchoose. Keep pruning rules close to the choice.',
-    trap: 'Forgetting to undo state or copying too much state kills correctness or performance.',
-  },
-  'binary-search': {
-    signal: 'Sorted space, monotonic answer, minimum feasible value, or first/last occurrence.',
-    drill: 'Write the invariant first, then choose inclusive or half-open bounds.',
-    trap: 'Midpoint updates that do not shrink the range create infinite loops.',
-  },
-  dp: {
-    signal: 'Overlapping choices, optimal substructure, count ways, min/max cost, or constrained sequences.',
-    drill: 'Name the state, transition, base case, and iteration order in that order.',
-    trap: 'Most DP bugs are state definitions that omit one necessary dimension.',
-  },
-  graphs: {
-    signal: 'Entities connected by relationships, reachability, components, ordering, or shortest path.',
-    drill: 'Classify first: BFS, DFS, topological sort, DSU, or weighted shortest path.',
-    trap: 'Visited timing changes behavior in cyclic graphs.',
-  },
-  trees: {
-    signal: 'Hierarchical decisions, ancestor/descendant relation, depth, path, or subtree aggregation.',
-    drill: 'Decide whether the answer is pre-order, in-order, post-order, or level-order.',
-    trap: 'Path state shared across branches must be copied or reverted.',
-  },
-}
-
-function getPlaybook(chapter) {
-  const fallbackPattern = chapter.patterns[0]?.title || chapter.name
-  const fallbackVariation = chapter.variations[0]?.title || 'core variations'
-
-  return chapterPlaybooks[chapter.id] || {
-    signal: `Start by spotting whether the prompt resembles ${cleanText(fallbackPattern)} or one of the chapter's repeated patterns.`,
-    drill: `Use the first practice pass to master ${cleanText(fallbackVariation)}, then revisit missed problems within 24 hours.`,
-    trap: 'Do not code before naming the invariant, edge case, and expected complexity.',
-  }
-}
 
 function StatBlock({ label, value, tone }) {
   return (
@@ -116,39 +43,72 @@ function Section({ eyebrow, title, icon: Icon, children }) {
   )
 }
 
-function PlaybookPanel({ chapter, playbook }) {
+const activityViews = [
+  { key: 'week', label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'year', label: 'Year' },
+]
+
+function ActivityPanel({ activityStats }) {
+  const [range, setRange] = useState('week')
+  const series = activityStats?.series?.[range] || []
+  const maxCount = Math.max(1, ...series.map(item => item.count || 0))
+  const hasActivity = series.some(item => item.count > 0)
+  const metrics = [
+    { label: 'This week', value: activityStats?.weeklySolved || 0, icon: CalendarDays },
+    { label: 'This month', value: activityStats?.monthlySolved || 0, icon: BarChart3 },
+    { label: 'Current streak', value: `${activityStats?.currentStreak || 0}d`, icon: Flame },
+    { label: 'Best streak', value: `${activityStats?.bestStreak || 0}d`, icon: TrendingUp },
+  ]
+
   return (
-    <section className="insight-panel playbook-panel">
+    <section className="insight-panel activity-panel">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Chapter playbook</p>
-          <h2>{chapter.name} strategy</h2>
+          <p className="eyebrow">Practice activity</p>
+          <h2>Solved momentum</h2>
         </div>
-        <Compass size={18} />
+        <BarChart3 size={18} />
       </div>
-      <div className="playbook-stack">
-        <article>
-          <span><Lightbulb size={15} /></span>
-          <div>
-            <strong>Recognition signal</strong>
-            <p>{playbook.signal}</p>
-          </div>
-        </article>
-        <article>
-          <span><Zap size={15} /></span>
-          <div>
-            <strong>Best drill</strong>
-            <p>{playbook.drill}</p>
-          </div>
-        </article>
-        <article>
-          <span><ShieldAlert size={15} /></span>
-          <div>
-            <strong>Failure trap</strong>
-            <p>{playbook.trap}</p>
-          </div>
-        </article>
+
+      <div className="activity-tabs" aria-label="Activity range">
+        {activityViews.map(view => (
+          <button
+            key={view.key}
+            type="button"
+            className={range === view.key ? 'is-active' : ''}
+            onClick={() => setRange(view.key)}
+          >
+            {view.label}
+          </button>
+        ))}
       </div>
+
+      <div className="activity-summary-grid">
+        {metrics.map(metric => {
+          const Icon = metric.icon
+          return (
+            <article key={metric.label} className="activity-metric">
+              <Icon size={14} />
+              <strong>{metric.value}</strong>
+              <span>{metric.label}</span>
+            </article>
+          )
+        })}
+      </div>
+
+      <div className="activity-bars" aria-label={`${range} solved activity`}>
+        {series.map(item => (
+          <div key={item.key} className="activity-row">
+            <span className="activity-label">{item.label}</span>
+            <span className="activity-track">
+              <span className="activity-fill" style={{ width: `${Math.max(5, Math.round(((item.count || 0) / maxCount) * 100))}%` }} />
+            </span>
+            <span className="activity-count">{item.count || 0}</span>
+          </div>
+        ))}
+      </div>
+      {!hasActivity && <p className="activity-empty">Solve a problem to start your activity graph.</p>}
     </section>
   )
 }
@@ -156,6 +116,7 @@ function PlaybookPanel({ chapter, playbook }) {
 export default function ChapterDetail({
   chapter,
   chapterStats,
+  activityStats,
   filter,
   activeView,
   onViewChange,
@@ -173,7 +134,6 @@ export default function ChapterDetail({
   const { done, total } = chapterStats
   const pct = total ? Math.round((done / total) * 100) : 0
   const nextProblem = (chapter.problems || []).find(problem => !isProblemChecked(problem.id))
-  const playbook = getPlaybook(chapter)
   const unsolvedCount = (chapter.problems || []).filter(problem => !isProblemChecked(problem.id)).length
   const isReviewingUnsolved = filter === 'unsolved'
 
@@ -280,8 +240,8 @@ export default function ChapterDetail({
               </div>
             </Section>
 
-            <div className="mobile-playbook">
-              <PlaybookPanel chapter={chapter} playbook={playbook} />
+            <div className="mobile-activity">
+              <ActivityPanel activityStats={activityStats} />
             </div>
           </div>
 
@@ -306,8 +266,8 @@ export default function ChapterDetail({
               isTrackerChecked={isTrackerChecked}
               toggleTracker={toggleTracker}
             />
-            <div className="mobile-playbook mobile-playbook-tracker">
-              <PlaybookPanel chapter={chapter} playbook={playbook} />
+            <div className="mobile-activity mobile-activity-tracker">
+              <ActivityPanel activityStats={activityStats} />
             </div>
           </div>
         </div>
@@ -320,7 +280,7 @@ export default function ChapterDetail({
             toggleTracker={toggleTracker}
           />
 
-          <PlaybookPanel chapter={chapter} playbook={playbook} />
+          <ActivityPanel activityStats={activityStats} />
         </aside>
       </div>
     </div>

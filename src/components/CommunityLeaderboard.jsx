@@ -1,8 +1,42 @@
 import { useState, useEffect } from 'react'
-import { Trophy, Users, Share2, Check, BarChart3, BookOpen, Target, ArrowLeft } from 'lucide-react'
+import { Trophy, Users, Share2, Check, BarChart3, BookOpen, Target, ArrowLeft, Flame, CalendarDays, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { buildActivityStats } from '../lib/activity'
 import { chapters } from '../data/chapters'
 import './CommunityLeaderboard.css'
+
+const leaderboardModes = [
+  { key: 'total', label: 'Total', orderBy: 'total_solved', scoreLabel: 'Solved' },
+  { key: 'week', label: 'This Week', orderBy: 'weekly_solved', scoreLabel: 'Week' },
+  { key: 'month', label: 'This Month', orderBy: 'monthly_solved', scoreLabel: 'Month' },
+  { key: 'streak', label: 'Streak', orderBy: 'current_streak', scoreLabel: 'Streak' },
+]
+
+function getLeaderboardScore(user, mode) {
+  if (mode === 'week') return user.weekly_solved || 0
+  if (mode === 'month') return user.monthly_solved || 0
+  if (mode === 'streak') return user.current_streak || 0
+  return user.total_solved || 0
+}
+
+function ActivityMiniChart({ activityStats }) {
+  const series = activityStats?.series?.week || []
+  const maxCount = Math.max(1, ...series.map(item => item.count || 0))
+
+  return (
+    <div className="mini-activity-chart" aria-label="Weekly solved activity">
+      {series.map(item => (
+        <div key={item.key} className="mini-activity-row">
+          <span>{item.label}</span>
+          <span className="mini-activity-track">
+            <span style={{ width: `${Math.max(5, Math.round(((item.count || 0) / maxCount) * 100))}%` }} />
+          </span>
+          <strong>{item.count || 0}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function FriendProfile({ friendId, onBack }) {
   const [profile, setProfile] = useState(null)
@@ -39,11 +73,19 @@ function FriendProfile({ friendId, onBack }) {
   if (error) return <div className="profile-error">{error}</div>
   if (!profile) return <div className="profile-error">Profile not found.</div>
 
-  const { username, total_solved, chapter_progress, difficulty_breakdown, solved_problems, tracker_progress, last_active, avatar_url } = profile
+  const { username, total_solved, chapter_progress, difficulty_breakdown, solved_problems, tracker_progress, last_active, avatar_url, solved_at, weekly_solved, monthly_solved, current_streak, best_streak } = profile
   const diff = difficulty_breakdown || { easy: 0, medium: 0, hard: 0 }
   const chProgress = chapter_progress || {}
   const trackerData = tracker_progress || {}
   const solvedList = solved_problems || []
+  const remoteActivity = buildActivityStats(solved_at || {})
+  const activityStats = {
+    ...remoteActivity,
+    weeklySolved: weekly_solved ?? remoteActivity.weeklySolved,
+    monthlySolved: monthly_solved ?? remoteActivity.monthlySolved,
+    currentStreak: current_streak ?? remoteActivity.currentStreak,
+    bestStreak: best_streak ?? remoteActivity.bestStreak,
+  }
   const totalProblems = chapters.reduce((s, c) => s + (c.problems || []).length, 0)
   const pct = totalProblems ? Math.round((total_solved / totalProblems) * 100) : 0
 
@@ -122,11 +164,24 @@ function FriendProfile({ friendId, onBack }) {
             <span className="profile-stat-pill">
               <BarChart3 size={14} /> {pct}% complete
             </span>
+            <span className="profile-stat-pill">
+              <Flame size={14} /> {activityStats.currentStreak}d streak
+            </span>
             <span className="profile-stat-pill muted">
               Last active: {timeAgo(last_active)}
             </span>
           </div>
         </div>
+      </div>
+
+      <div className="profile-section">
+        <h3><TrendingUp size={16} /> Practice Activity</h3>
+        <div className="profile-activity-summary">
+          <span><CalendarDays size={14} /> {activityStats.weeklySolved} this week</span>
+          <span><BarChart3 size={14} /> {activityStats.monthlySolved} this month</span>
+          <span><Flame size={14} /> {activityStats.bestStreak}d best</span>
+        </div>
+        <ActivityMiniChart activityStats={activityStats} />
       </div>
 
       {/* Difficulty breakdown */}
@@ -187,7 +242,7 @@ function FriendProfile({ friendId, onBack }) {
   )
 }
 
-export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, syncNow, profile, onOpenProfile }) {
+export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, activityStats, syncNow, profile, onOpenProfile }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
   const [copyState, setCopyState] = useState('idle')
@@ -195,6 +250,8 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
   const [isEditingName, setIsEditingName] = useState(false)
   const [tempName, setTempName] = useState(currentUsername)
   const [viewingFriend, setViewingFriend] = useState(null)
+  const [leaderboardMode, setLeaderboardMode] = useState('total')
+  const activeMode = leaderboardModes.find(mode => mode.key === leaderboardMode) || leaderboardModes[0]
 
   useEffect(() => {
     // Check URL for friend param
@@ -207,19 +264,21 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
 
   useEffect(() => {
     fetchLeaderboard()
-  }, [profile?.leaderboardOptIn, stats?.totalSolved])
+  }, [leaderboardMode, profile?.leaderboardOptIn, stats?.totalSolved, activityStats?.weeklySolved, activityStats?.monthlySolved, activityStats?.currentStreak])
 
   const fetchLeaderboard = async () => {
     try {
+      setLoading(true)
       if (!supabase) {
         setLeaderboard([])
         return
       }
 
-        const { data, error } = await supabase
-          .from('community_profiles')
-          .select('id, username, total_solved, last_active, difficulty_breakdown, avatar_url, leaderboard_opt_in')
+      const { data, error } = await supabase
+        .from('community_profiles')
+        .select('id, username, total_solved, weekly_solved, monthly_solved, current_streak, best_streak, last_active, difficulty_breakdown, avatar_url, leaderboard_opt_in')
         .eq('leaderboard_opt_in', true)
+        .order(activeMode.orderBy, { ascending: false })
         .order('total_solved', { ascending: false })
         .limit(50)
 
@@ -389,11 +448,24 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
       </header>
 
       <div className="leaderboard-table">
+        <div className="leaderboard-tabs" aria-label="Leaderboard sort">
+          {leaderboardModes.map(mode => (
+            <button
+              key={mode.key}
+              type="button"
+              className={leaderboardMode === mode.key ? 'is-active' : ''}
+              onClick={() => setLeaderboardMode(mode.key)}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
         <div className="table-header">
           <span className="col-rank">Rank</span>
           <span className="col-user">Developer</span>
           <span className="col-diff">Easy / Med / Hard</span>
-          <span className="col-score">Solved</span>
+          <span className="col-momentum">Momentum</span>
+          <span className="col-score">{activeMode.scoreLabel}</span>
         </div>
 
         <div className="table-body">
@@ -403,6 +475,7 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
             leaderboard.map((user, idx) => {
               const isMe = user.id === currentUserId
               const diff = user.difficulty_breakdown || {}
+              const score = getLeaderboardScore(user, leaderboardMode)
               return (
                 <div
                   key={user.id}
@@ -433,7 +506,12 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
                     <span className="mini-diff med-mini">{diff.medium || 0}</span>
                     <span className="mini-diff hard-mini">{diff.hard || 0}</span>
                   </span>
-                  <span className="col-score">{user.total_solved}</span>
+                  <span className="col-momentum">
+                    <span className="momentum-chip"><CalendarDays size={12} />{user.weekly_solved || 0}</span>
+                    <span className="momentum-chip"><BarChart3 size={12} />{user.monthly_solved || 0}</span>
+                    <span className="momentum-chip"><Flame size={12} />{user.current_streak || 0}d</span>
+                  </span>
+                  <span className="col-score">{leaderboardMode === 'streak' ? `${score}d` : score}</span>
                 </div>
               )
             })

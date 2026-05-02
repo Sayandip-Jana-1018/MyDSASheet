@@ -1,10 +1,12 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { chapters } from '../data/chapters'
 import { supabase } from '../lib/supabase'
+import { buildActivityStats, normalizeSolvedAt } from '../lib/activity'
 
 const PROFILE_KEY = 'dsa-profile'
 const LEGACY_ID_KEY = 'dsa-user-id'
 const LEGACY_NAME_KEY = 'dsa-username'
+const SOLVED_AT_KEY = 'dsa-solved-at'
 const EMPTY_PROGRESS = {}
 
 function loadJSON(key, fallback) {
@@ -87,14 +89,21 @@ function loadProfile() {
   }
 }
 
-function buildProfilePayload({ stats, tracker, bookmarks }) {
+function buildProfilePayload({ stats, tracker, bookmarks, solvedAtByProblem, activityStats }) {
+  const activity = activityStats || buildActivityStats(solvedAtByProblem)
+
   return {
     total_solved: stats.totalSolved,
     chapter_progress: stats.chapterStats,
     difficulty_breakdown: stats.difficultyBreakdown,
     solved_problems: stats.solvedIds,
+    solved_at: solvedAtByProblem,
     bookmarked_problems: Object.keys(bookmarks),
     tracker_progress: tracker,
+    weekly_solved: activity.weeklySolved,
+    monthly_solved: activity.monthlySolved,
+    current_streak: activity.currentStreak,
+    best_streak: activity.bestStreak,
     last_active: new Date().toISOString()
   }
 }
@@ -113,6 +122,7 @@ function payloadToLocalProgress(profile) {
       return acc
     }, {}),
     tracker: normalizeMap(profile?.tracker_progress || {}, Boolean),
+    solvedAtByProblem: normalizeSolvedAt(profile?.solved_at || {}),
   }
 }
 
@@ -136,6 +146,7 @@ async function getFunctionErrorMessage(error) {
 
 export function useProgress() {
   const [problems, setProblems] = useState(() => normalizeMap(loadJSON('dsa-problems', {}), Boolean))
+  const [solvedAtByProblem, setSolvedAtByProblem] = useState(() => normalizeSolvedAt(loadJSON(SOLVED_AT_KEY, {})))
   const [tracker, setTracker] = useState(() => normalizeMap(loadJSON('dsa-tracker', {}), Boolean))
   const [bookmarks, setBookmarks] = useState(() => normalizeMap(loadJSON('dsa-bookmarks', {}), Boolean))
   const [notes, setNotes] = useState(() => normalizeTextMap(loadJSON('dsa-notes', {})))
@@ -166,12 +177,25 @@ export function useProgress() {
 
   const toggleProblem = useCallback((id) => {
     if (!id) return
+    const solvedAt = new Date().toISOString()
     setProblems(prev => {
       const next = normalizeMap(prev, Boolean)
       if (next[id]) {
         delete next[id]
+        setSolvedAtByProblem(prevSolvedAt => {
+          const nextSolvedAt = normalizeSolvedAt(prevSolvedAt)
+          delete nextSolvedAt[id]
+          saveJSON(SOLVED_AT_KEY, nextSolvedAt)
+          return nextSolvedAt
+        })
       } else {
         next[id] = true
+        setSolvedAtByProblem(prevSolvedAt => {
+          const nextSolvedAt = normalizeSolvedAt(prevSolvedAt)
+          nextSolvedAt[id] = nextSolvedAt[id] || solvedAt
+          saveJSON(SOLVED_AT_KEY, nextSolvedAt)
+          return nextSolvedAt
+        })
       }
       saveJSON('dsa-problems', next)
       return next
@@ -267,8 +291,10 @@ export function useProgress() {
     }
   }, [problems, bookmarks, notes])
 
-  const syncDataRef = useRef({ profile, stats, tracker, bookmarks })
-  syncDataRef.current = { profile, stats, tracker, bookmarks }
+  const activityStats = useMemo(() => buildActivityStats(solvedAtByProblem), [solvedAtByProblem])
+
+  const syncDataRef = useRef({ profile, stats, tracker, bookmarks, solvedAtByProblem, activityStats })
+  syncDataRef.current = { profile, stats, tracker, bookmarks, solvedAtByProblem, activityStats }
 
   const claimRemoteProfile = useCallback(async (nextProfile, payload) => {
     const { data, error } = await supabase.rpc('claim_community_profile', {
@@ -289,7 +315,7 @@ export function useProgress() {
   }, [persistProfile])
 
   const syncNow = useCallback(async (overrideProfile) => {
-    const { profile: currentProfile, stats: s, tracker: t, bookmarks: b } = syncDataRef.current
+    const { profile: currentProfile, stats: s, tracker: t, bookmarks: b, solvedAtByProblem: solvedAt, activityStats: activity } = syncDataRef.current
     const nextProfile = overrideProfile || currentProfile
 
     try {
@@ -298,7 +324,7 @@ export function useProgress() {
         return { ok: false, skipped: true, reason: 'private-profile' }
       }
 
-      const payload = buildProfilePayload({ stats: s, tracker: t, bookmarks: b })
+      const payload = buildProfilePayload({ stats: s, tracker: t, bookmarks: b, solvedAtByProblem: solvedAt, activityStats: activity })
       const { data, error } = await supabase.rpc('sync_community_profile', {
         p_id: nextProfile.id,
         p_sync_code: nextProfile.syncCode,
@@ -338,7 +364,7 @@ export function useProgress() {
       await syncNow()
     }, 1800)
     return () => clearTimeout(timer)
-  }, [problems, tracker, bookmarks, profile, syncNow])
+  }, [problems, tracker, bookmarks, solvedAtByProblem, profile, syncNow])
 
   const claimProfile = useCallback(async ({ username, leaderboardOptIn = true }) => {
     const displayName = cleanName(username)
@@ -363,7 +389,7 @@ export function useProgress() {
         return { ok: true, profile: nextProfile, localOnly: true }
       }
 
-      const payload = buildProfilePayload({ stats, tracker, bookmarks })
+      const payload = buildProfilePayload({ stats, tracker, bookmarks, solvedAtByProblem, activityStats })
       const savedProfile = await claimRemoteProfile(nextProfile, payload)
       setSyncStatus({ state: 'synced', message: savedProfile.leaderboardOptIn ? 'Profile joined leaderboard.' : 'Private sync profile ready.' })
       return { ok: true, profile: savedProfile }
@@ -372,7 +398,7 @@ export function useProgress() {
       setSyncStatus({ state: 'error', message: 'Profile saved locally. Run the new Supabase schema to publish.' })
       return { ok: true, profile: nextProfile, localOnly: true, error: err }
     }
-  }, [bookmarks, claimRemoteProfile, persistProfile, profile, stats, tracker])
+  }, [activityStats, bookmarks, claimRemoteProfile, persistProfile, profile, solvedAtByProblem, stats, tracker])
 
   const connectWithCode = useCallback(async (code) => {
     const syncCode = String(code || '').trim().toUpperCase()
@@ -395,9 +421,11 @@ export function useProgress() {
       setProblems(restored.problems)
       setBookmarks(restored.bookmarks)
       setTracker(restored.tracker)
+      setSolvedAtByProblem(restored.solvedAtByProblem)
       saveJSON('dsa-problems', restored.problems)
       saveJSON('dsa-bookmarks', restored.bookmarks)
       saveJSON('dsa-tracker', restored.tracker)
+      saveJSON(SOLVED_AT_KEY, restored.solvedAtByProblem)
 
       const nextProfile = persistProfile({
         id: remote.id,
@@ -453,8 +481,10 @@ export function useProgress() {
     return nextProfile
   }, [persistProfile, profile, syncNow])
 
-  const uploadAvatar = useCallback(async (avatarDataUrl) => {
-    if (!profile.claimed || !profile.syncCode) {
+  const uploadAvatar = useCallback(async (avatarDataUrl, profileOverride) => {
+    const targetProfile = profileOverride || profile
+
+    if (!targetProfile.claimed || !targetProfile.syncCode) {
       return { ok: false, error: new Error('Claim your profile before uploading an avatar.') }
     }
 
@@ -464,8 +494,8 @@ export function useProgress() {
       }
       setSyncStatus({ state: 'syncing', message: avatarDataUrl ? 'Uploading avatar...' : 'Removing avatar...' })
 
-      const { stats: s, tracker: t, bookmarks: b } = syncDataRef.current
-      const ensuredProfile = await claimRemoteProfile(profile, buildProfilePayload({ stats: s, tracker: t, bookmarks: b }))
+      const { stats: s, tracker: t, bookmarks: b, solvedAtByProblem: solvedAt, activityStats: activity } = syncDataRef.current
+      const ensuredProfile = await claimRemoteProfile(targetProfile, buildProfilePayload({ stats: s, tracker: t, bookmarks: b, solvedAtByProblem: solvedAt, activityStats: activity }))
 
       const { data, error } = await supabase.functions.invoke('upload-profile-avatar', {
         body: {
@@ -498,10 +528,12 @@ export function useProgress() {
 
   const startFreshLocal = useCallback(() => {
     setProblems({})
+    setSolvedAtByProblem({})
     setTracker({})
     setBookmarks({})
     setNotes({})
     saveJSON('dsa-problems', EMPTY_PROGRESS)
+    saveJSON(SOLVED_AT_KEY, EMPTY_PROGRESS)
     saveJSON('dsa-tracker', EMPTY_PROGRESS)
     saveJSON('dsa-bookmarks', EMPTY_PROGRESS)
     saveJSON('dsa-notes', EMPTY_PROGRESS)
@@ -523,10 +555,12 @@ export function useProgress() {
 
   const resetAll = useCallback(async () => {
     setProblems({})
+    setSolvedAtByProblem({})
     setTracker({})
     setBookmarks({})
     setNotes({})
     saveJSON('dsa-problems', {})
+    saveJSON(SOLVED_AT_KEY, {})
     saveJSON('dsa-tracker', {})
     saveJSON('dsa-bookmarks', {})
     saveJSON('dsa-notes', {})
@@ -541,7 +575,7 @@ export function useProgress() {
     isTrackerChecked, toggleTracker,
     isBookmarked, toggleBookmark,
     getNote, setNote, notes,
-    stats, resetAll, syncNow,
+    stats, activityStats, resetAll, syncNow,
     userId: profile.id,
     username: profile.username || 'Private pilot',
     setUsername: updateProfileName,

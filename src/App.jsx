@@ -32,7 +32,7 @@ export default function App() {
     isTrackerChecked, toggleTracker,
     isBookmarked, toggleBookmark,
     getNote, setNote,
-    stats, resetAll, syncNow,
+    stats, activityStats, resetAll, syncNow,
     userId, username, setUsername,
     profile, claimProfile, connectWithCode, findProfilesByName, setLeaderboardOptIn, uploadAvatar,
     dismissOnboarding, startFreshLocal,
@@ -232,6 +232,7 @@ export default function App() {
               currentUsername={username}
               setUsername={setUsername}
               stats={stats}
+              activityStats={activityStats}
               syncNow={syncNow}
               profile={profile}
               onOpenProfile={() => {
@@ -248,6 +249,7 @@ export default function App() {
                 key={activeData.id}
                 chapter={activeData}
                 chapterStats={chapterStats}
+                activityStats={activityStats}
                 filter={filter}
                 search={search}
                 activeView={activeView}
@@ -283,10 +285,6 @@ export default function App() {
         onRename={setUsername}
         onOptInChange={setLeaderboardOptIn}
         onUploadAvatar={uploadAvatar}
-        onContinuePrivate={() => {
-          dismissOnboarding()
-          setProfileModalOpen(false)
-        }}
         onStartFresh={startFreshLocal}
       />
     </div>

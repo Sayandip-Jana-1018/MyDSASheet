@@ -11,6 +11,11 @@ create table if not exists public.community_profiles (
   chapter_progress jsonb not null default '{}'::jsonb,
   difficulty_breakdown jsonb not null default '{}'::jsonb,
   solved_problems jsonb not null default '[]'::jsonb,
+  solved_at jsonb not null default '{}'::jsonb,
+  weekly_solved integer not null default 0,
+  monthly_solved integer not null default 0,
+  current_streak integer not null default 0,
+  best_streak integer not null default 0,
   bookmarked_problems jsonb not null default '[]'::jsonb,
   tracker_progress jsonb not null default '{}'::jsonb,
   avatar_url text,
@@ -26,6 +31,11 @@ create table if not exists public.community_profiles (
 
 alter table public.community_profiles add column if not exists difficulty_breakdown jsonb not null default '{}'::jsonb;
 alter table public.community_profiles add column if not exists solved_problems jsonb not null default '[]'::jsonb;
+alter table public.community_profiles add column if not exists solved_at jsonb not null default '{}'::jsonb;
+alter table public.community_profiles add column if not exists weekly_solved integer not null default 0;
+alter table public.community_profiles add column if not exists monthly_solved integer not null default 0;
+alter table public.community_profiles add column if not exists current_streak integer not null default 0;
+alter table public.community_profiles add column if not exists best_streak integer not null default 0;
 alter table public.community_profiles add column if not exists bookmarked_problems jsonb not null default '[]'::jsonb;
 alter table public.community_profiles add column if not exists tracker_progress jsonb not null default '{}'::jsonb;
 alter table public.community_profiles add column if not exists avatar_url text;
@@ -53,6 +63,18 @@ create policy "Opted-in profiles are public."
 
 create index if not exists community_profiles_total_solved_idx
   on public.community_profiles (total_solved desc)
+  where leaderboard_opt_in = true;
+
+create index if not exists community_profiles_weekly_solved_idx
+  on public.community_profiles (weekly_solved desc)
+  where leaderboard_opt_in = true;
+
+create index if not exists community_profiles_monthly_solved_idx
+  on public.community_profiles (monthly_solved desc)
+  where leaderboard_opt_in = true;
+
+create index if not exists community_profiles_current_streak_idx
+  on public.community_profiles (current_streak desc)
   where leaderboard_opt_in = true;
 
 create index if not exists community_profiles_sync_code_hash_idx
@@ -86,6 +108,11 @@ begin
     chapter_progress = coalesce(p_payload->'chapter_progress', '{}'::jsonb),
     difficulty_breakdown = coalesce(p_payload->'difficulty_breakdown', '{}'::jsonb),
     solved_problems = coalesce(p_payload->'solved_problems', '[]'::jsonb),
+    solved_at = coalesce(p_payload->'solved_at', '{}'::jsonb),
+    weekly_solved = greatest(coalesce((p_payload->>'weekly_solved')::integer, 0), 0),
+    monthly_solved = greatest(coalesce((p_payload->>'monthly_solved')::integer, 0), 0),
+    current_streak = greatest(coalesce((p_payload->>'current_streak')::integer, 0), 0),
+    best_streak = greatest(coalesce((p_payload->>'best_streak')::integer, 0), 0),
     bookmarked_problems = coalesce(p_payload->'bookmarked_problems', '[]'::jsonb),
     tracker_progress = coalesce(p_payload->'tracker_progress', '{}'::jsonb),
     profile_claimed = true,
@@ -255,6 +282,11 @@ returns table (
   chapter_progress jsonb,
   difficulty_breakdown jsonb,
   solved_problems jsonb,
+  solved_at jsonb,
+  weekly_solved integer,
+  monthly_solved integer,
+  current_streak integer,
+  best_streak integer,
   bookmarked_problems jsonb,
   tracker_progress jsonb,
   avatar_url text,
@@ -274,6 +306,11 @@ as $$
     cp.chapter_progress,
     cp.difficulty_breakdown,
     cp.solved_problems,
+    cp.solved_at,
+    cp.weekly_solved,
+    cp.monthly_solved,
+    cp.current_streak,
+    cp.best_streak,
     cp.bookmarked_problems,
     cp.tracker_progress,
     cp.avatar_url,

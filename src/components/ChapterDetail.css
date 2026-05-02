@@ -436,53 +436,141 @@ html[data-theme="dark"] .insight-panel {
   padding: 18px;
 }
 
-.playbook-panel {
+.activity-panel {
   background:
     radial-gradient(260px 160px at 92% 4%, color-mix(in srgb, var(--chapter-color) 20%, transparent), transparent 68%),
     linear-gradient(145deg, color-mix(in srgb, var(--bg-canvas) 86%, transparent), var(--bg-subtle));
   box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
-.playbook-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.playbook-stack article {
+.activity-tabs {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--chapter-color) 16%, var(--border));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 14%, var(--border));
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--bg-canvas) 68%, transparent);
+  background: color-mix(in srgb, var(--bg-canvas) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-.playbook-stack article > span {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  color: var(--text-primary);
+.activity-tabs button {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+}
+
+.activity-tabs button.is-active {
+  border-color: color-mix(in srgb, var(--chapter-color) 28%, var(--border));
   background:
-    linear-gradient(145deg, color-mix(in srgb, var(--chapter-color) 20%, var(--bg-subtle)), var(--bg-canvas));
+    radial-gradient(circle at 20% 10%, color-mix(in srgb, white 24%, transparent), transparent 38%),
+    linear-gradient(145deg, color-mix(in srgb, var(--chapter-color) 18%, var(--bg-canvas)), var(--bg-subtle));
+  color: var(--text-primary);
 }
 
-.playbook-stack strong {
+.activity-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.activity-metric {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 16%, var(--border));
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-canvas) 78%, transparent), color-mix(in srgb, var(--chapter-color) 4%, var(--bg-subtle)));
+}
+
+.activity-metric svg {
+  grid-row: span 2;
+  color: var(--accent);
+}
+
+.activity-metric strong {
   display: block;
   color: var(--text-primary);
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 15px;
   font-weight: 900;
-  line-height: 1.15;
+  line-height: 1;
 }
 
-.playbook-stack p {
-  margin: 6px 0 0;
+.activity-metric span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.activity-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 15px;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 9px;
+}
+
+.activity-label,
+.activity-count {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.activity-count {
+  text-align: right;
   color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 1.48;
+}
+
+.activity-track {
+  height: 13px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 10%, var(--border));
+  border-radius: var(--radius-full);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--bg-muted) 88%, transparent), color-mix(in srgb, var(--chapter-color) 5%, var(--bg-muted)));
+  overflow: hidden;
+}
+
+.activity-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255,255,255,0.35), transparent 36%),
+    linear-gradient(90deg, var(--chapter-color), color-mix(in srgb, var(--chapter-color) 54%, #7c3aed));
+  box-shadow: 0 0 14px color-mix(in srgb, var(--chapter-color) 24%, transparent);
+  transition: width 240ms var(--ease-out);
+}
+
+.activity-empty {
+  margin: 12px 0 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .tip-list {
@@ -517,7 +605,7 @@ html[data-theme="dark"] .insight-panel {
   display: none;
 }
 
-.mobile-playbook {
+.mobile-activity {
   display: none;
 }
 
@@ -543,11 +631,11 @@ html[data-theme="dark"] .insight-panel {
     display: block;
   }
 
-  .mobile-playbook {
+  .mobile-activity {
     display: block;
   }
 
-  .mobile-playbook-tracker {
+  .mobile-activity-tracker {
     margin-top: 14px;
   }
 }
@@ -670,6 +758,10 @@ html[data-theme="dark"] .insight-panel {
   .pattern-grid,
   .variation-grid {
     grid-template-columns: 1fr;
+  }
+
+  .activity-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

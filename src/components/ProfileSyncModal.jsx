@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Camera, Check, Copy, KeyRound, Link2, Lock, LogIn, Moon, RotateCcw, Share2, Sparkles, Sun, Trash2, UserRound, X } from 'lucide-react'
+import { Camera, Check, Copy, KeyRound, Link2, LogIn, Moon, RotateCcw, Share2, Sparkles, Sun, Trash2, UserRound, X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import './ProfileSyncModal.css'
 
@@ -48,7 +48,6 @@ export default function ProfileSyncModal({
   open,
   initialMode = 'welcome',
   profile,
-  stats,
   onClose,
   onClaim,
   onConnect,
@@ -56,7 +55,6 @@ export default function ProfileSyncModal({
   onRename,
   onOptInChange,
   onUploadAvatar,
-  onContinuePrivate,
   onStartFresh,
 }) {
   const { theme, toggleTheme } = useTheme()
@@ -68,6 +66,8 @@ export default function ProfileSyncModal({
   const [feedback, setFeedback] = useState('')
   const [profileMatches, setProfileMatches] = useState([])
   const [profileLookupBusy, setProfileLookupBusy] = useState(false)
+  const [pendingAvatarDataUrl, setPendingAvatarDataUrl] = useState('')
+  const [leaderboardOptIn, setLeaderboardOptInState] = useState(true)
 
   const syncLink = useMemo(() => buildSyncLink(profile?.syncCode), [profile?.syncCode])
 
@@ -75,10 +75,12 @@ export default function ProfileSyncModal({
     if (open) {
       setMode(profile?.claimed && initialMode === 'welcome' ? 'manage' : initialMode)
       setName(profile?.username && profile.username !== 'Private pilot' ? profile.username : '')
+      setPendingAvatarDataUrl('')
+      setLeaderboardOptInState(profile?.claimed ? Boolean(profile.leaderboardOptIn) : true)
       setFeedback('')
       setProfileMatches([])
     }
-  }, [open, initialMode, profile?.claimed, profile?.username])
+  }, [open, initialMode, profile?.claimed, profile?.leaderboardOptIn, profile?.username])
 
   useEffect(() => {
     if (!open || mode !== 'claim' || !name.trim() || !onFindProfiles) {
@@ -107,21 +109,32 @@ export default function ProfileSyncModal({
     }
   }
 
-  const claim = async (leaderboardOptIn = true) => {
+  const claim = async () => {
     setBusy(true)
     setFeedback('')
     const result = await onClaim({ username: name, leaderboardOptIn })
-    setBusy(false)
     if (result?.ok) {
+      let avatarResult = null
+      if (pendingAvatarDataUrl && onUploadAvatar) {
+        setAvatarBusy(true)
+        avatarResult = await onUploadAvatar(pendingAvatarDataUrl, result.profile)
+        setAvatarBusy(false)
+      }
+      setBusy(false)
       setMode('manage')
+      setPendingAvatarDataUrl('')
       setFeedback(result?.localOnly
         ? 'Profile saved here. Add Supabase setup to sync publicly.'
-        : leaderboardOptIn
-          ? 'Profile published.'
-          : 'Private sync profile created.')
+        : avatarResult && !avatarResult.ok
+          ? avatarResult.error?.message || 'Profile created, but photo upload failed.'
+          : leaderboardOptIn
+            ? 'Profile published.'
+            : 'Private sync profile created.')
     } else if (!name.trim()) {
+      setBusy(false)
       setFeedback('Enter a display name.')
     } else {
+      setBusy(false)
       setFeedback(result?.error?.message || 'Could not create profile yet.')
     }
   }
@@ -166,6 +179,11 @@ export default function ProfileSyncModal({
       setAvatarBusy(true)
       setFeedback('')
       const avatarDataUrl = await createAvatarDataUrl(file)
+      if (!profile?.claimed) {
+        setPendingAvatarDataUrl(avatarDataUrl)
+        setFeedback('Photo ready.')
+        return
+      }
       const result = await onUploadAvatar(avatarDataUrl)
       setFeedback(result?.ok ? 'Avatar updated.' : result?.error?.message || 'Avatar upload failed.')
     } catch (err) {
@@ -176,6 +194,11 @@ export default function ProfileSyncModal({
   }
 
   const removeAvatar = async () => {
+    if (!profile?.claimed) {
+      setPendingAvatarDataUrl('')
+      setFeedback('Photo removed.')
+      return
+    }
     setAvatarBusy(true)
     const result = await onUploadAvatar(null)
     setAvatarBusy(false)
@@ -187,8 +210,12 @@ export default function ProfileSyncModal({
     setMode('welcome')
     setName('')
     setCode('')
+    setPendingAvatarDataUrl('')
     setFeedback('Fresh local profile ready.')
   }
+
+  const avatarPreview = profile?.claimed ? profile.avatarUrl : pendingAvatarDataUrl
+  const avatarInitial = (name || profile?.username || 'P').charAt(0).toUpperCase()
 
   return (
     <div className="profile-modal-layer" role="presentation">
@@ -207,18 +234,20 @@ export default function ProfileSyncModal({
           <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
         </button>
         {profile?.claimed && mode === 'manage' && (
-          <button className="profile-back" type="button" onClick={startFresh} aria-label="Back to guest mode">
+          <button className="profile-back" type="button" onClick={startFresh} aria-label="Start fresh profile">
             <RotateCcw size={15} />
-            <span>Guest</span>
+            <span>Reset</span>
           </button>
         )}
 
         <div className="profile-modal-hero">
           <span className="profile-orb"><Sparkles size={18} /></span>
           <p className="eyebrow">Profile sync</p>
-          <h2>{mode === 'connect' ? 'Connect this device' : profile?.claimed ? 'Your cockpit profile' : 'Keep your DSA progress yours'}</h2>
+          <h2>{mode === 'connect' ? 'Connect this device' : mode === 'claim' ? 'Create your profile' : profile?.claimed ? 'Your cockpit profile' : 'Keep your DSA progress yours'}</h2>
           <p>
-            Practice privately, or claim one profile that syncs across devices and appears on the global leaderboard only when you allow it.
+            {mode === 'welcome'
+              ? 'Create one cached profile for this browser, or restore an existing profile with a sync code.'
+              : 'Sync across devices and appear on the global leaderboard only when you allow it.'}
           </p>
         </div>
 
@@ -226,23 +255,13 @@ export default function ProfileSyncModal({
           <div className="profile-choice-grid">
             <button type="button" onClick={() => setMode('claim')}>
               <UserRound size={18} />
-              <strong>{stats?.totalSolved ? 'Use current progress' : 'Join leaderboard'}</strong>
-              <span>{stats?.totalSolved ? 'Claim this browser progress publicly.' : 'Name required, public stats enabled.'}</span>
+              <strong>Join leaderboard</strong>
+              <span>Add your name and photo. You choose public or private before joining.</span>
             </button>
             <button type="button" onClick={() => setMode('connect')}>
               <KeyRound size={18} />
-              <strong>I have a sync code</strong>
-              <span>Load the same profile on this device.</span>
-            </button>
-            <button type="button" onClick={startFresh}>
-              <RotateCcw size={18} />
-              <strong>Start fresh</strong>
-              <span>Clear local progress and create a new browser profile.</span>
-            </button>
-            <button type="button" onClick={onContinuePrivate}>
-              <Lock size={18} />
-              <strong>Continue privately</strong>
-              <span>No public row, progress stays on this browser.</span>
+              <strong>Join with code</strong>
+              <span>Open your same profile on a new phone, tablet, or desktop.</span>
             </button>
           </div>
         )}
@@ -256,6 +275,45 @@ export default function ProfileSyncModal({
 
             {!profile?.claimed ? (
               <>
+                <div className="avatar-panel avatar-panel-claim">
+                  <div className="avatar-preview">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt={`${name || 'Profile'} avatar preview`} />
+                    ) : (
+                      <span>{avatarInitial}</span>
+                    )}
+                  </div>
+                  <div className="avatar-copy">
+                    <span className="sync-label">Profile photo</span>
+                    <strong>{avatarPreview ? 'Photo selected' : 'Add a photo'}</strong>
+                    <p>A square-friendly PNG, JPG, or WebP looks best on the leaderboard.</p>
+                    <div className="avatar-actions">
+                      <label className="avatar-upload">
+                        <Camera size={14} />
+                        {avatarBusy ? 'Preparing...' : avatarPreview ? 'Replace photo' : 'Upload photo'}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarFile} disabled={avatarBusy} />
+                      </label>
+                      {avatarPreview && (
+                        <button type="button" onClick={removeAvatar} disabled={avatarBusy}>
+                          <Trash2 size={14} /> Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <label className={`publish-toggle publish-toggle-large ${leaderboardOptIn ? 'is-on' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={leaderboardOptIn}
+                    onChange={event => setLeaderboardOptInState(event.target.checked)}
+                  />
+                  <span>
+                    <strong>{leaderboardOptIn ? 'Show on leaderboard' : 'Keep profile private'}</strong>
+                    <em>{leaderboardOptIn ? 'Your name, photo, and stats can rank publicly.' : 'Sync works, but public ranking stays hidden.'}</em>
+                  </span>
+                </label>
+
                 {(profileLookupBusy || profileMatches.length > 0) && (
                   <div className="profile-match-panel">
                     <span className="sync-label">Existing public profiles</span>
@@ -283,13 +341,9 @@ export default function ProfileSyncModal({
                 )}
 
                 <div className="profile-actions-row">
-                  <button className="profile-primary" type="button" disabled={busy} onClick={() => claim(true)}>
+                  <button className="profile-primary" type="button" disabled={busy || avatarBusy} onClick={claim}>
                     <Share2 size={16} />
-                    Create profile
-                  </button>
-                  <button className="profile-secondary" type="button" disabled={busy} onClick={() => claim(false)}>
-                    <Lock size={16} />
-                    Private sync
+                    {busy || avatarBusy ? 'Creating...' : leaderboardOptIn ? 'Join leaderboard' : 'Create private sync'}
                   </button>
                 </div>
               </>
@@ -297,10 +351,10 @@ export default function ProfileSyncModal({
               <>
                 <div className="avatar-panel">
                   <div className="avatar-preview">
-                    {profile.avatarUrl ? (
-                      <img src={profile.avatarUrl} alt={`${profile.username || 'Profile'} avatar`} />
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt={`${profile.username || 'Profile'} avatar`} />
                     ) : (
-                      <span>{(profile.username || 'P').charAt(0).toUpperCase()}</span>
+                      <span>{avatarInitial}</span>
                     )}
                   </div>
                   <div className="avatar-copy">
@@ -342,9 +396,9 @@ export default function ProfileSyncModal({
                   </button>
                   <button className="profile-secondary" type="button" onClick={startFresh}>
                     <RotateCcw size={16} />
-                    Back to guest
+                    Start fresh
                   </button>
-                  <label className="publish-toggle">
+                  <label className={`publish-toggle ${profile.leaderboardOptIn ? 'is-on' : ''}`}>
                     <input
                       type="checkbox"
                       checked={Boolean(profile.leaderboardOptIn)}

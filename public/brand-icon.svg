@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6EA8FF"/>
+      <stop offset="0.55" stop-color="#315CF6"/>
+      <stop offset="1" stop-color="#173062"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0" cy="0" r="1" gradientTransform="matrix(30 24 -24 30 19 14)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.8"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="18" fill="url(#shine)"/>
+  <path d="M21 42c8.8-1.8 16.2-9.2 18-18" fill="none" stroke="white" stroke-width="4.6" stroke-linecap="round"/>
+  <path d="M21 29h15M29 21v15" fill="none" stroke="white" stroke-width="4.6" stroke-linecap="round"/>
+  <path d="M42.5 16.5l1.8 4.1 4.2 1.9-4.2 1.8-1.8 4.2-1.9-4.2-4.1-1.8 4.1-1.9 1.9-4.1Z" fill="white"/>
+  <path d="M47 35l1.1 2.4 2.4 1.1-2.4 1.1L47 42l-1.1-2.4-2.4-1.1 2.4-1.1L47 35Z" fill="white" opacity="0.9"/>
+</svg>
