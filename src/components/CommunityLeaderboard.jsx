@@ -35,7 +35,19 @@ function buildAreaPaths(series) {
     const y = baseline - ((item.count || 0) / maxCount) * chartHeight
     return { ...item, x, y, color: activityColors[index % activityColors.length] }
   })
-  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+  const linePath = points.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x} ${point.y}`
+
+    const previous = points[index - 1]
+    const beforePrevious = points[index - 2] || previous
+    const next = points[index + 1] || point
+    const cp1x = previous.x + (point.x - beforePrevious.x) / 6
+    const cp1y = previous.y + (point.y - beforePrevious.y) / 6
+    const cp2x = point.x - (next.x - previous.x) / 6
+    const cp2y = point.y - (next.y - previous.y) / 6
+
+    return `${path} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${point.x} ${point.y}`
+  }, '')
   const areaPath = points.length
     ? `${linePath} L ${points[points.length - 1].x} ${baseline} L ${points[0].x} ${baseline} Z`
     : ''
