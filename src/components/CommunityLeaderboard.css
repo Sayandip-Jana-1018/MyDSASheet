@@ -581,47 +581,97 @@
 }
 
 .mini-activity-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.mini-activity-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 32px;
-  align-items: center;
-  gap: 10px;
-}
-
-.mini-activity-row > span:first-child,
-.mini-activity-row strong {
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 850;
-}
-
-.mini-activity-row strong {
-  color: var(--text-secondary);
-  text-align: right;
-}
-
-.mini-activity-track {
-  height: 14px;
-  border: 1px solid color-mix(in srgb, var(--chapter-color) 10%, var(--border));
-  border-radius: var(--radius-full);
-  background: var(--bg-muted);
+  gap: 12px;
+  min-height: 220px;
+  padding: 14px 14px 12px;
+  border: 1px solid color-mix(in srgb, var(--chapter-color) 12%, var(--border));
+  border-radius: 18px;
+  background:
+    radial-gradient(280px 120px at 50% 0%, color-mix(in srgb, var(--chapter-color) 8%, transparent), transparent 70%),
+    color-mix(in srgb, var(--bg-canvas) 72%, transparent);
   overflow: hidden;
 }
 
-.mini-activity-track span {
+.area-activity-chart svg {
+  width: 100%;
+  min-height: 170px;
   display: block;
-  height: 100%;
-  border-radius: inherit;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(255,255,255,0.35), transparent 36%),
-    linear-gradient(90deg, var(--chapter-color, #315cf6), #7c3aed);
-  box-shadow: 0 0 12px color-mix(in srgb, var(--chapter-color) 22%, transparent);
+}
+
+.area-grid-line {
+  fill: none;
+  stroke: color-mix(in srgb, var(--border) 62%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 8 8;
+}
+
+.area-fill {
+  fill: url(#activityAreaGradient);
+  animation: areaRise 520ms var(--ease-out) both;
+}
+
+.area-line {
+  fill: none;
+  stroke: url(#activityLineGradient);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 900;
+  stroke-dashoffset: 900;
+  animation: drawAreaLine 900ms var(--ease-out) 120ms forwards;
+}
+
+.area-point-halo {
+  opacity: 0.18;
+  animation: pointPulse 2.5s ease-in-out infinite;
+}
+
+.area-point {
+  stroke: var(--bg-canvas);
+  stroke-width: 3;
+}
+
+.area-activity-labels {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.area-activity-labels span {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.area-activity-labels strong {
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+@keyframes drawAreaLine {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes areaRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pointPulse {
+  0%, 100% { opacity: 0.14; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(1.25); }
 }
 
 /* ── Profile sections ── */

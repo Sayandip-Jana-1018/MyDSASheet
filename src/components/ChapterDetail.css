@@ -501,12 +501,23 @@ html[data-theme="dark"] .insight-panel {
 }
 
 .activity-metric strong {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 900;
   line-height: 1;
+}
+
+.activity-metric strong small {
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .activity-metric span {
@@ -521,16 +532,31 @@ html[data-theme="dark"] .insight-panel {
 .activity-bars {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
   margin-top: 15px;
 }
 
 .activity-row {
+  --bar-color: hsl(calc(210 + (var(--activity-index) * 38)) 86% 58%);
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 24px;
+  grid-template-columns: 42px minmax(0, 1fr) 28px;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  min-width: 0;
 }
+
+.activity-row:nth-child(1) { --bar-color: #ef4444; --bar-color-next: #f97316; }
+.activity-row:nth-child(2) { --bar-color: #3b82f6; --bar-color-next: #8b5cf6; }
+.activity-row:nth-child(3) { --bar-color: #22c55e; --bar-color-next: #14b8a6; }
+.activity-row:nth-child(4) { --bar-color: #eab308; --bar-color-next: #f59e0b; }
+.activity-row:nth-child(5) { --bar-color: #ec4899; --bar-color-next: #f43f5e; }
+.activity-row:nth-child(6) { --bar-color: #8b5cf6; --bar-color-next: #6366f1; }
+.activity-row:nth-child(7) { --bar-color: #06b6d4; --bar-color-next: #3b82f6; }
+.activity-row:nth-child(8) { --bar-color: #f97316; --bar-color-next: #ef4444; }
+.activity-row:nth-child(9) { --bar-color: #14b8a6; --bar-color-next: #22c55e; }
+.activity-row:nth-child(10) { --bar-color: #f43f5e; --bar-color-next: #ec4899; }
+.activity-row:nth-child(11) { --bar-color: #6366f1; --bar-color-next: #3b82f6; }
+.activity-row:nth-child(12) { --bar-color: #84cc16; --bar-color-next: #eab308; }
 
 .activity-label,
 .activity-count {
@@ -542,27 +568,39 @@ html[data-theme="dark"] .insight-panel {
 
 .activity-count {
   text-align: right;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  font-size: 11px;
 }
 
 .activity-track {
-  height: 13px;
+  height: 15px;
   border: 1px solid color-mix(in srgb, var(--chapter-color) 10%, var(--border));
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--bg-muted) 88%, transparent), color-mix(in srgb, var(--chapter-color) 5%, var(--bg-muted)));
+    linear-gradient(90deg, color-mix(in srgb, var(--bg-muted) 76%, transparent), color-mix(in srgb, var(--bg-muted) 92%, transparent));
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.1);
 }
 
 .activity-fill {
   display: block;
+  width: var(--activity-width);
   height: 100%;
   border-radius: inherit;
   background:
-    radial-gradient(circle at 12% 20%, rgba(255,255,255,0.35), transparent 36%),
-    linear-gradient(90deg, var(--chapter-color), color-mix(in srgb, var(--chapter-color) 54%, #7c3aed));
-  box-shadow: 0 0 14px color-mix(in srgb, var(--chapter-color) 24%, transparent);
+    linear-gradient(90deg, rgba(255,255,255,0.34), transparent 18%, rgba(255,255,255,0.22) 45%, transparent 64%),
+    linear-gradient(90deg, var(--bar-color), var(--bar-color-next, #7c3aed), color-mix(in srgb, var(--bar-color) 70%, white));
+  background-size: 180% 100%, 100% 100%;
+  box-shadow:
+    0 8px 16px color-mix(in srgb, var(--bar-color) 28%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  animation: activityShimmer 2.8s ease-in-out infinite;
   transition: width 240ms var(--ease-out);
+}
+
+@keyframes activityShimmer {
+  0%, 100% { background-position: 0% 0, 0 0; }
+  50% { background-position: 100% 0, 0 0; }
 }
 
 .activity-empty {

@@ -57,8 +57,8 @@ function ActivityPanel({ activityStats }) {
   const metrics = [
     { label: 'This week', value: activityStats?.weeklySolved || 0, icon: CalendarDays },
     { label: 'This month', value: activityStats?.monthlySolved || 0, icon: BarChart3 },
-    { label: 'Current streak', value: `${activityStats?.currentStreak || 0}d`, icon: Flame },
-    { label: 'Best streak', value: `${activityStats?.bestStreak || 0}d`, icon: TrendingUp },
+    { label: 'Current streak', value: activityStats?.currentStreak || 0, unit: 'days', icon: Flame },
+    { label: 'Best streak', value: activityStats?.bestStreak || 0, unit: 'days', icon: TrendingUp },
   ]
 
   return (
@@ -90,7 +90,10 @@ function ActivityPanel({ activityStats }) {
           return (
             <article key={metric.label} className="activity-metric">
               <Icon size={14} />
-              <strong>{metric.value}</strong>
+              <strong>
+                {metric.value}
+                {metric.unit && <small>{metric.unit}</small>}
+              </strong>
               <span>{metric.label}</span>
             </article>
           )
@@ -98,11 +101,18 @@ function ActivityPanel({ activityStats }) {
       </div>
 
       <div className="activity-bars" aria-label={`${range} solved activity`}>
-        {series.map(item => (
-          <div key={item.key} className="activity-row">
+        {series.map((item, index) => (
+          <div
+            key={item.key}
+            className="activity-row"
+            style={{
+              '--activity-width': `${Math.max(6, Math.round(((item.count || 0) / maxCount) * 100))}%`,
+              '--activity-index': index,
+            }}
+          >
             <span className="activity-label">{item.label}</span>
             <span className="activity-track">
-              <span className="activity-fill" style={{ width: `${Math.max(5, Math.round(((item.count || 0) / maxCount) * 100))}%` }} />
+              <span className="activity-fill" />
             </span>
             <span className="activity-count">{item.count || 0}</span>
           </div>

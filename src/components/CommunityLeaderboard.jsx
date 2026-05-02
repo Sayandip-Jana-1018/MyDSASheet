@@ -12,6 +12,8 @@ const leaderboardModes = [
   { key: 'streak', label: 'Streak', orderBy: 'current_streak', scoreLabel: 'Streak' },
 ]
 
+const activityColors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#ec4899', '#8b5cf6', '#06b6d4']
+
 function getLeaderboardScore(user, mode) {
   if (mode === 'week') return user.weekly_solved || 0
   if (mode === 'month') return user.monthly_solved || 0
@@ -19,21 +21,77 @@ function getLeaderboardScore(user, mode) {
   return user.total_solved || 0
 }
 
+function buildAreaPaths(series) {
+  const width = 700
+  const height = 190
+  const paddingX = 28
+  const paddingY = 22
+  const maxCount = Math.max(1, ...series.map(item => item.count || 0))
+  const chartWidth = width - paddingX * 2
+  const chartHeight = height - paddingY * 2
+  const baseline = height - paddingY
+  const points = series.map((item, index) => {
+    const x = series.length <= 1 ? width / 2 : paddingX + (chartWidth * index) / (series.length - 1)
+    const y = baseline - ((item.count || 0) / maxCount) * chartHeight
+    return { ...item, x, y, color: activityColors[index % activityColors.length] }
+  })
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+  const areaPath = points.length
+    ? `${linePath} L ${points[points.length - 1].x} ${baseline} L ${points[0].x} ${baseline} Z`
+    : ''
+
+  return { width, height, baseline, points, linePath, areaPath }
+}
+
 function ActivityMiniChart({ activityStats }) {
   const series = activityStats?.series?.week || []
-  const maxCount = Math.max(1, ...series.map(item => item.count || 0))
+  const chart = buildAreaPaths(series)
 
   return (
-    <div className="mini-activity-chart" aria-label="Weekly solved activity">
-      {series.map(item => (
-        <div key={item.key} className="mini-activity-row">
-          <span>{item.label}</span>
-          <span className="mini-activity-track">
-            <span style={{ width: `${Math.max(5, Math.round(((item.count || 0) / maxCount) * 100))}%` }} />
+    <div className="mini-activity-chart area-activity-chart" aria-label="Weekly solved activity">
+      <svg viewBox={`0 0 ${chart.width} ${chart.height}`} role="img" aria-hidden="true" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="activityLineGradient" x1="0" y1="0" x2="1" y2="0">
+            {activityColors.map((color, index) => (
+              <stop key={color} offset={`${(index / (activityColors.length - 1)) * 100}%`} stopColor={color} />
+            ))}
+          </linearGradient>
+          <linearGradient id="activityAreaGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.34" />
+            <stop offset="24%" stopColor="#3b82f6" stopOpacity="0.28" />
+            <stop offset="48%" stopColor="#22c55e" stopOpacity="0.24" />
+            <stop offset="72%" stopColor="#ec4899" stopOpacity="0.24" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.32" />
+          </linearGradient>
+          <filter id="activityGlow" x="-10%" y="-40%" width="120%" height="180%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.20 0 1 0 0 0.36 0 0 1 0 0.95 0 0 0 0.35 0" />
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <path className="area-grid-line" d="M 28 50 H 672" />
+        <path className="area-grid-line" d="M 28 96 H 672" />
+        <path className="area-grid-line" d="M 28 142 H 672" />
+        {chart.areaPath && <path className="area-fill" d={chart.areaPath} />}
+        {chart.linePath && <path className="area-line" d={chart.linePath} filter="url(#activityGlow)" />}
+        {chart.points.map(point => (
+          <g key={point.key}>
+            <circle className="area-point-halo" cx={point.x} cy={point.y} r="9" fill={point.color} />
+            <circle className="area-point" cx={point.x} cy={point.y} r="4.5" fill={point.color} />
+          </g>
+        ))}
+      </svg>
+      <div className="area-activity-labels">
+        {series.map(item => (
+          <span key={item.key}>
+            <strong>{item.count || 0}</strong>
+            {item.label}
           </span>
-          <strong>{item.count || 0}</strong>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
@@ -165,7 +223,7 @@ function FriendProfile({ friendId, onBack }) {
               <BarChart3 size={14} /> {pct}% complete
             </span>
             <span className="profile-stat-pill">
-              <Flame size={14} /> {activityStats.currentStreak}d streak
+              <Flame size={14} /> {activityStats.currentStreak} days streak
             </span>
             <span className="profile-stat-pill muted">
               Last active: {timeAgo(last_active)}
@@ -179,7 +237,7 @@ function FriendProfile({ friendId, onBack }) {
         <div className="profile-activity-summary">
           <span><CalendarDays size={14} /> {activityStats.weeklySolved} this week</span>
           <span><BarChart3 size={14} /> {activityStats.monthlySolved} this month</span>
-          <span><Flame size={14} /> {activityStats.bestStreak}d best</span>
+          <span><Flame size={14} /> {activityStats.bestStreak} days best</span>
         </div>
         <ActivityMiniChart activityStats={activityStats} />
       </div>
@@ -509,9 +567,9 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
                   <span className="col-momentum">
                     <span className="momentum-chip"><CalendarDays size={12} />{user.weekly_solved || 0}</span>
                     <span className="momentum-chip"><BarChart3 size={12} />{user.monthly_solved || 0}</span>
-                    <span className="momentum-chip"><Flame size={12} />{user.current_streak || 0}d</span>
+                    <span className="momentum-chip"><Flame size={12} />{user.current_streak || 0} days</span>
                   </span>
-                  <span className="col-score">{leaderboardMode === 'streak' ? `${score}d` : score}</span>
+                  <span className="col-score">{leaderboardMode === 'streak' ? `${score} days` : score}</span>
                 </div>
               )
             })
