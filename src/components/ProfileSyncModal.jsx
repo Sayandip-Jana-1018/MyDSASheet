@@ -218,8 +218,20 @@ export default function ProfileSyncModal({
   const avatarInitial = (name || profile?.username || 'P').charAt(0).toUpperCase()
 
   return (
-    <div className="profile-modal-layer" role="presentation">
-      <section className={`profile-modal profile-modal-${mode}`} role="dialog" aria-modal="true" aria-label="Profile sync">
+    <div
+      className="profile-modal-layer"
+      role="presentation"
+      onMouseDown={event => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section
+        className={`profile-modal profile-modal-${mode}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Profile sync"
+        onMouseDown={event => event.stopPropagation()}
+      >
         <button className="profile-close" type="button" onClick={onClose} aria-label="Close profile sync">
           <X size={17} />
         </button>
