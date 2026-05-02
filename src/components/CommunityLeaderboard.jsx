@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Trophy, Users, Share2, Check, BarChart3, BookOpen, Target, ArrowLeft, Flame, CalendarDays, TrendingUp } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { buildActivityStats } from '../lib/activity'
@@ -96,16 +96,22 @@ function ActivityMiniChart({ activityStats }) {
   )
 }
 
-function FriendProfile({ friendId, onBack }) {
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+function FriendProfile({ friendId, onBack, localProfile }) {
+  const [profile, setProfile] = useState(localProfile || null)
+  const [loading, setLoading] = useState(!localProfile)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (localProfile) {
+      setProfile(localProfile)
+      setLoading(false)
+      setError(null)
+    }
+
     const fetchProfile = async () => {
       try {
         if (!supabase) {
-          setError('Community sharing is not configured for this build.')
+          if (!localProfile) setError('Community sharing is not configured for this build.')
           return
         }
 
@@ -119,13 +125,14 @@ function FriendProfile({ friendId, onBack }) {
         setProfile(data)
       } catch (err) {
         console.error('Error fetching friend profile:', err)
-        setError('Could not load this profile. The link may be invalid.')
+        if (!localProfile) setError('Could not load this profile. The link may be invalid.')
       } finally {
         setLoading(false)
       }
     }
     fetchProfile()
-  }, [friendId])
+    return undefined
+  }, [friendId, localProfile])
 
   if (loading) return <div className="profile-loading">Loading profile...</div>
   if (error) return <div className="profile-error">{error}</div>
@@ -137,8 +144,9 @@ function FriendProfile({ friendId, onBack }) {
   const trackerData = tracker_progress || {}
   const solvedList = solved_problems || []
   const remoteActivity = buildActivityStats(solved_at || {})
+  const profileActivityStats = profile.__activityStats || remoteActivity
   const activityStats = {
-    ...remoteActivity,
+    ...profileActivityStats,
     weeklySolved: weekly_solved ?? remoteActivity.weeklySolved,
     monthlySolved: monthly_solved ?? remoteActivity.monthlySolved,
     currentStreak: current_streak ?? remoteActivity.currentStreak,
@@ -300,7 +308,7 @@ function FriendProfile({ friendId, onBack }) {
   )
 }
 
-export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, activityStats, syncNow, profile, onOpenProfile }) {
+export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, activityStats, solvedAtByProblem, trackerProgress, syncNow, profile, onOpenProfile }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
   const [copyState, setCopyState] = useState('idle')
@@ -310,6 +318,23 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
   const [viewingFriend, setViewingFriend] = useState(null)
   const [leaderboardMode, setLeaderboardMode] = useState('total')
   const activeMode = leaderboardModes.find(mode => mode.key === leaderboardMode) || leaderboardModes[0]
+  const myProfileDetails = useMemo(() => ({
+    id: currentUserId,
+    username: currentUsername,
+    total_solved: stats?.totalSolved || 0,
+    chapter_progress: stats?.chapterStats || {},
+    difficulty_breakdown: stats?.difficultyBreakdown || { easy: 0, medium: 0, hard: 0 },
+    solved_problems: stats?.solvedIds || [],
+    tracker_progress: trackerProgress || {},
+    avatar_url: profile?.avatarUrl || '',
+    solved_at: solvedAtByProblem || {},
+    weekly_solved: activityStats?.weeklySolved || 0,
+    monthly_solved: activityStats?.monthlySolved || 0,
+    current_streak: activityStats?.currentStreak || 0,
+    best_streak: activityStats?.bestStreak || 0,
+    last_active: new Date().toISOString(),
+    __activityStats: activityStats,
+  }), [activityStats, currentUserId, currentUsername, profile?.avatarUrl, solvedAtByProblem, stats, trackerProgress])
 
   useEffect(() => {
     // Check URL for friend param
@@ -424,9 +449,10 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
 
   // If viewing a friend's profile
   if (viewingFriend) {
+    const isViewingMe = viewingFriend === currentUserId
     return (
       <div className="community-board">
-        <FriendProfile friendId={viewingFriend} onBack={() => {
+        <FriendProfile friendId={viewingFriend} localProfile={isViewingMe ? myProfileDetails : null} onBack={() => {
           setViewingFriend(null)
           // Clean URL
           const url = new URL(window.location.href)
@@ -485,6 +511,10 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
             <span>{stats?.pct || 0}%</span>
             <span>{stats?.bookmarkCount || 0} saved</span>
           </div>
+          <button className="view-profile-btn" type="button" onClick={() => setViewingFriend(currentUserId)}>
+            <BarChart3 size={15} />
+            <span>View My Profile</span>
+          </button>
           <button className="share-btn" onClick={handleCopyLink}>
             {copyState === 'copied' ? <Check size={16} /> : <Share2 size={16} />}
             <span>
@@ -538,9 +568,9 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
                 <div
                   key={user.id}
                   className={`leaderboard-row ${isMe ? 'is-me' : ''}`}
-                  onClick={() => !isMe && setViewingFriend(user.id)}
-                  style={{ cursor: isMe ? 'default' : 'pointer' }}
-                  title={isMe ? '' : `View ${user.username}'s profile`}
+                  onClick={() => setViewingFriend(user.id)}
+                  style={{ cursor: 'pointer' }}
+                  title={`View ${isMe ? 'your' : `${user.username}'s`} profile`}
                 >
                   <span className="col-rank">
                     {idx === 0 ? <Trophy size={16} className="gold" /> :

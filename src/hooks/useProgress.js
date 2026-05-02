@@ -575,7 +575,7 @@ export function useProgress() {
     isTrackerChecked, toggleTracker,
     isBookmarked, toggleBookmark,
     getNote, setNote, notes,
-    stats, activityStats, resetAll, syncNow,
+    stats, activityStats, solvedAtByProblem, trackerProgress: tracker, resetAll, syncNow,
     userId: profile.id,
     username: profile.username || 'Private pilot',
     setUsername: updateProfileName,

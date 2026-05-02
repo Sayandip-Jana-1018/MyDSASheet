@@ -32,7 +32,7 @@ export default function App() {
     isTrackerChecked, toggleTracker,
     isBookmarked, toggleBookmark,
     getNote, setNote,
-    stats, activityStats, resetAll, syncNow,
+    stats, activityStats, solvedAtByProblem, trackerProgress, resetAll, syncNow,
     userId, username, setUsername,
     profile, claimProfile, connectWithCode, findProfilesByName, setLeaderboardOptIn, uploadAvatar,
     dismissOnboarding, startFreshLocal,
@@ -233,6 +233,8 @@ export default function App() {
               setUsername={setUsername}
               stats={stats}
               activityStats={activityStats}
+              solvedAtByProblem={solvedAtByProblem}
+              trackerProgress={trackerProgress}
               syncNow={syncNow}
               profile={profile}
               onOpenProfile={() => {
