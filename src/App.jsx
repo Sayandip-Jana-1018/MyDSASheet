@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, useEffect } from 'react'
-import { ChevronDown, MessageSquare } from 'lucide-react'
+import { useMemo, useCallback, useRef, useState, useEffect } from 'react'
+import { ChevronDown, MessageSquare, Users } from 'lucide-react'
 import { chapters } from './data/chapters'
 import { useProgress } from './hooks/useProgress'
 import { useCommunityQuestions, getDisplayTitle, getDisplayUrl, getDisplayDifficulty } from './hooks/useCommunityQuestions'
@@ -222,8 +222,61 @@ export default function App() {
     }
   }, [profile.claimed, profile.syncCode, syncNow])
 
-  const activeData = chapters.find(c => c.id === activeChapter) || chapters[0]
-  const chapterStats = stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length }
+  const COMMUNITY_CHAPTER_ID = 'community'
+  const isCommunityChapter = activeChapter === COMMUNITY_CHAPTER_ID
+
+  // Build pseudo-chapter from community questions
+  const communityChapterData = useMemo(() => {
+    const problems = (communityHub.questions || []).map(q => ({
+      id: q.id,
+      name: getDisplayTitle(q),
+      difficulty: getDisplayDifficulty(q) || 'Medium',
+      pattern: q.company_name || (q.drive_name ? `Drive: ${q.drive_name}` : 'Community'),
+      url: getDisplayUrl(q) || '',
+    }))
+    const totalEasy = problems.filter(p => p.difficulty === 'Easy').length
+    const totalMed = problems.filter(p => p.difficulty === 'Medium').length
+    const totalHard = problems.filter(p => p.difficulty === 'Hard').length
+    return {
+      id: COMMUNITY_CHAPTER_ID,
+      num: '★',
+      icon: '🤝',
+      name: 'Community Questions',
+      color: '#8B5CF6',
+      concepts: [
+        'These are real interview questions shared by community members.',
+        'Practice them to stay prepared for what companies are actually asking.',
+        'Check off problems as you solve them to track your progress.',
+        'Visit the Interview Questions hub (Community tab) to add your own.',
+      ],
+      patterns: [
+        { title: 'Real Interviews', desc: 'Questions sourced directly from recent interviews by community members.' },
+        { title: 'Company Specific', desc: 'Filter by company to focus on the problems that matter to you.' },
+      ],
+      variations: [],
+      problems,
+      totalEasy,
+      totalMed,
+      totalHard,
+    }
+  }, [communityHub.questions])
+
+  const communityIsProblemChecked = useCallback((id) => communityHub.isChecked(id), [communityHub.isChecked])
+  const communityToggleProblem = useCallback((id) => communityHub.toggleCheck(id), [communityHub.toggleCheck])
+
+  const activeData = isCommunityChapter
+    ? communityChapterData
+    : (chapters.find(c => c.id === activeChapter) || chapters[0])
+
+  const communityChapterStats = useMemo(() => {
+    const total = communityChapterData.problems.length
+    const done = communityHub.checkedCount
+    return { done, total }
+  }, [communityChapterData.problems.length, communityHub.checkedCount])
+
+  const chapterStats = isCommunityChapter
+    ? communityChapterStats
+    : (stats.chapterStats[activeData?.id] || { done: 0, total: (activeData?.problems || []).length })
 
   const resetWorkspaceScroll = () => {
     window.setTimeout(() => {
@@ -234,13 +287,14 @@ export default function App() {
 
   const filteredProblems = useMemo(() => {
     if (!activeData || !activeData.problems) return []
+    const checkFn = isCommunityChapter ? communityIsProblemChecked : isProblemChecked
 
     return activeData.problems.filter(problem => {
       if (filter === 'Easy' || filter === 'Medium' || filter === 'Hard') {
         if (problem.difficulty !== filter) return false
-      } else if (filter === 'unsolved' && isProblemChecked(problem.id)) {
+      } else if (filter === 'unsolved' && checkFn(problem.id)) {
         return false
-      } else if (filter === 'bookmarked' && !isBookmarked(problem.id)) {
+      } else if (filter === 'bookmarked' && !isCommunityChapter && !isBookmarked(problem.id)) {
         return false
       }
 
@@ -250,7 +304,7 @@ export default function App() {
 
       return true
     })
-  }, [activeData, filter, search, isProblemChecked, isBookmarked])
+  }, [activeData, filter, search, isProblemChecked, isBookmarked, isCommunityChapter, communityIsProblemChecked])
 
   const handleChapterSelect = chapterId => {
     setActiveChapter(chapterId)
@@ -379,35 +433,25 @@ export default function App() {
               <ChevronDown size={20} />
             </button>
 
-            {/* Community questions in sidebar */}
+            {/* Community questions pseudo-chapter button */}
             {communityHub.questions.length > 0 && (
               <div className="sidebar-community-section">
-                <div className="sidebar-community-header">
-                  <MessageSquare size={14} />
-                  <span>Community Questions</span>
-                  <span className="sidebar-community-count">{communityHub.checkedCount}/{communityHub.questions.length}</span>
-                </div>
-                <div className="sidebar-community-list">
-                  {communityHub.questions.slice(0, 20).map(q => {
-                    const title = getDisplayTitle(q)
-                    const diff = getDisplayDifficulty(q)
-                    const checked = communityHub.isChecked(q.id)
-                    return (
-                      <button
-                        key={q.id}
-                        className={`sidebar-cq-item ${checked ? 'is-checked' : ''}`}
-                        onClick={() => communityHub.toggleCheck(q.id)}
-                        title={title}
-                      >
-                        <span className={`sidebar-cq-check ${checked ? 'checked' : ''}`}>
-                          {checked && '✓'}
-                        </span>
-                        <span className="sidebar-cq-title">{title}</span>
-                        {diff && <span className={`sidebar-cq-diff ${diff.toLowerCase()}`}>{diff.charAt(0)}</span>}
-                      </button>
-                    )
-                  })}
-                </div>
+                <button
+                  type="button"
+                  className={`chapter-item community-chapter-btn ${isCommunityChapter ? 'is-active' : ''}`}
+                  onClick={() => handleChapterSelect(COMMUNITY_CHAPTER_ID)}
+                  style={{ '--chapter-color': '#8B5CF6' }}
+                >
+                  <span className="chapter-index"><Users size={14} /></span>
+                  <span className="chapter-accent" />
+                  <span className="chapter-copy">
+                    <span className="chapter-name">Community Questions</span>
+                    <span className="chapter-meta">{communityHub.checkedCount}/{communityHub.questions.length} solved</span>
+                    <span className="chapter-meter">
+                      <span style={{ width: `${communityHub.questions.length ? Math.round((communityHub.checkedCount / communityHub.questions.length) * 100) : 0}%` }} />
+                    </span>
+                  </span>
+                </button>
               </div>
             )}
           </aside>
@@ -450,14 +494,14 @@ export default function App() {
                 onFilter={handleFilterChange}
                 filteredProblems={filteredProblems}
                 highlightedProblemId={highlightedProblemId}
-                isProblemChecked={isProblemChecked}
-                toggleProblem={toggleProblem}
-                isTrackerChecked={isTrackerChecked}
-                toggleTracker={toggleTracker}
-                isBookmarked={isBookmarked}
-                toggleBookmark={toggleBookmark}
-                getNote={getNote}
-                setNote={setNote}
+                isProblemChecked={isCommunityChapter ? communityIsProblemChecked : isProblemChecked}
+                toggleProblem={isCommunityChapter ? communityToggleProblem : toggleProblem}
+                isTrackerChecked={isCommunityChapter ? (() => false) : isTrackerChecked}
+                toggleTracker={isCommunityChapter ? (() => {}) : toggleTracker}
+                isBookmarked={isCommunityChapter ? (() => false) : isBookmarked}
+                toggleBookmark={isCommunityChapter ? null : toggleBookmark}
+                getNote={isCommunityChapter ? (() => '') : getNote}
+                setNote={isCommunityChapter ? null : setNote}
               />
             </ErrorBoundary>
           ) : null}

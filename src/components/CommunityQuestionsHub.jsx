@@ -289,7 +289,7 @@ function AddQuestionPanel({
   )
 }
 
-function QuestionCard({ question, isChecked, onToggle, isClaimed }) {
+function QuestionCard({ question }) {
   const title = getDisplayTitle(question)
   const url = getDisplayUrl(question)
   const diff = getDisplayDifficulty(question)
@@ -297,22 +297,12 @@ function QuestionCard({ question, isChecked, onToggle, isClaimed }) {
 
   return (
     <motion.div
-      className={`question-card ${isChecked ? 'is-checked' : ''}`}
+      className="question-card"
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <button
-        type="button"
-        className="q-check"
-        aria-pressed={isChecked}
-        onClick={() => onToggle(question.id)}
-        title={isClaimed ? (isChecked ? 'Mark undone' : 'Mark done') : 'Claim profile to check'}
-      >
-        <span>{isChecked && <Check size={12} />}</span>
-      </button>
-
       <div className="q-content">
         <div className="q-title-row">
           {url ? (
@@ -360,7 +350,7 @@ function QuestionCard({ question, isChecked, onToggle, isClaimed }) {
             ) : (
               <span className="q-author-initial">{(author?.username || '?').charAt(0).toUpperCase()}</span>
             )}
-            {author?.username || 'Anonymous'}
+            Contributed by <strong>{author?.username || 'Anonymous'}</strong>
           </span>
           <span className="q-time">{timeAgo(question.created_at)}</span>
         </div>
@@ -549,9 +539,6 @@ export default function CommunityQuestionsHub({
                 <QuestionCard
                   key={q.id}
                   question={q}
-                  isChecked={isChecked(q.id)}
-                  onToggle={onToggleCheck}
-                  isClaimed={isClaimed}
                 />
               ))
             )}
