@@ -324,6 +324,7 @@
 
   .topbar-actions {
     gap: 5px;
+    margin-left: auto;
   }
 }
 
