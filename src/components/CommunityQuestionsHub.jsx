@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, Send, Check, ExternalLink, Building2,
   Briefcase, ChevronDown, ChevronUp, FileText,
-  Loader2, MessageCircle, X, Filter, Sparkles
+  Loader2, MessageCircle, X, Filter, Sparkles, Hash
 } from 'lucide-react'
 import LeetCodeIcon from './LeetCodeIcon'
 import { timeAgo, getDisplayTitle, getDisplayUrl, getDisplayDifficulty } from '../hooks/useCommunityQuestions'
