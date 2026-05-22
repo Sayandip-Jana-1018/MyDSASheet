@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Users, Share2, Check, BarChart3, BookOpen, Target, ArrowLeft, Flame, CalendarDays, TrendingUp } from 'lucide-react'
+import { Trophy, Users, BarChart3, BookOpen, Target, ArrowLeft, Flame, CalendarDays, TrendingUp, MessageSquare, ExternalLink, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { buildActivityStats } from '../lib/activity'
 import { chapters } from '../data/chapters'
+import CommunityQuestionsHub from './CommunityQuestionsHub'
+import { timeAgo, getDisplayTitle, getDisplayUrl, getDisplayDifficulty } from '../hooks/useCommunityQuestions'
 import './CommunityLeaderboard.css'
 
 const leaderboardModes = [
@@ -108,7 +110,7 @@ function ActivityMiniChart({ activityStats }) {
   )
 }
 
-function FriendProfile({ friendId, onBack, localProfile }) {
+function FriendProfile({ friendId, onBack, localProfile, solvedAtByProblem: friendSolvedAt, fetchRecentActivity }) {
   const [profile, setProfile] = useState(localProfile || null)
   const [loading, setLoading] = useState(!localProfile)
   const [error, setError] = useState(null)
@@ -316,17 +318,124 @@ function FriendProfile({ friendId, onBack, localProfile }) {
           </div>
         </div>
       </div>
+
+      {/* Recent Activity — shows 5 most recent questions (any type) */}
+      <RecentActivitySection
+        friendId={friendId}
+        solvedAtByProblem={profile?.solved_at || friendSolvedAt || {}}
+        fetchRecentActivity={fetchRecentActivity}
+      />
+    </div>
+  )
+}
+function RecentActivitySection({ friendId, solvedAtByProblem, fetchRecentActivity }) {
+  const [recentItems, setRecentItems] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      const items = []
+
+      // 1. Roadmap problems solved (from solved_at timestamps)
+      if (solvedAtByProblem && typeof solvedAtByProblem === 'object') {
+        const allProblems = new Map()
+        chapters.forEach(ch => {
+          (ch.problems || []).forEach(p => {
+            allProblems.set(p.id, { ...p, chapterName: ch.name, chapterColor: ch.color })
+          })
+        })
+
+        Object.entries(solvedAtByProblem).forEach(([problemId, solvedAt]) => {
+          if (!solvedAt) return
+          const prob = allProblems.get(problemId)
+          if (prob) {
+            items.push({
+              type: 'roadmap',
+              id: `roadmap-${problemId}`,
+              title: prob.name,
+              url: prob.url,
+              difficulty: prob.difficulty,
+              source: prob.chapterName,
+              sourceColor: prob.chapterColor,
+              timestamp: solvedAt,
+            })
+          }
+        })
+      }
+
+      // 2. Community questions checked (from Supabase)
+      if (fetchRecentActivity) {
+        const communityItems = await fetchRecentActivity(friendId, 10)
+        communityItems.forEach(item => {
+          items.push({
+            type: 'community',
+            id: `community-${item.question_id}`,
+            title: item.leetcode_title || item.custom_title || 'Untitled',
+            url: item.leetcode_url || item.custom_url || '',
+            difficulty: item.leetcode_difficulty || item.custom_difficulty || '',
+            source: item.company_name || 'Community',
+            sourceColor: null,
+            timestamp: item.checked_at,
+          })
+        })
+      }
+
+      // Sort by timestamp descending, take top 5
+      items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      if (!cancelled) {
+        setRecentItems(items.slice(0, 5))
+        setLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [friendId, solvedAtByProblem, fetchRecentActivity])
+
+  if (loading) return null
+  if (recentItems.length === 0) return null
+
+  return (
+    <div className="profile-section">
+      <h3><Clock size={16} /> Recent Activity</h3>
+      <div className="recent-activity-list">
+        {recentItems.map(item => (
+          <div key={item.id} className="recent-item">
+            <div className="recent-item-left">
+              {item.url ? (
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="recent-title">
+                  {item.title}
+                  <ExternalLink size={10} />
+                </a>
+              ) : (
+                <span className="recent-title no-link">{item.title}</span>
+              )}
+              <div className="recent-meta">
+                {item.difficulty && (
+                  <span className={`mini-diff ${item.difficulty === 'Easy' ? 'easy-mini' : item.difficulty === 'Medium' ? 'med-mini' : 'hard-mini'}`}>
+                    {item.difficulty}
+                  </span>
+                )}
+                <span className="recent-source">{item.source}</span>
+                <span className="recent-type-badge">{item.type === 'community' ? '💬' : '📘'}</span>
+              </div>
+            </div>
+            <span className="recent-time">{timeAgo(item.timestamp)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-export default function CommunityLeaderboard({ currentUserId, currentUsername, setUsername, stats, activityStats, solvedAtByProblem, trackerProgress, syncNow, profile, onOpenProfile }) {
+export default function CommunityLeaderboard({
+  currentUserId, currentUsername, setUsername, stats, activityStats,
+  solvedAtByProblem, trackerProgress, syncNow, profile, onOpenProfile,
+  communityHub,
+}) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
-  const [copyState, setCopyState] = useState('idle')
-  const [shareHint, setShareHint] = useState('')
-  const [isEditingName, setIsEditingName] = useState(false)
-  const [tempName, setTempName] = useState(currentUsername)
   const [viewingFriend, setViewingFriend] = useState(null)
   const [leaderboardMode, setLeaderboardMode] = useState('total')
   const activeMode = leaderboardModes.find(mode => mode.key === leaderboardMode) || leaderboardModes[0]
@@ -349,13 +458,16 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
   }), [activityStats, currentUserId, currentUsername, profile?.avatarUrl, solvedAtByProblem, stats, trackerProgress])
 
   useEffect(() => {
-    // Check URL for friend param
-    const params = new URLSearchParams(window.location.search)
-    const friendId = params.get('friend')
-    if (friendId && friendId !== currentUserId) {
-      setViewingFriend(friendId)
+    const handleUrlChange = () => {
+      const params = new URLSearchParams(window.location.search)
+      const friendId = params.get('friend')
+      setViewingFriend(friendId || null)
     }
-  }, [currentUserId])
+
+    handleUrlChange()
+    window.addEventListener('popstate', handleUrlChange)
+    return () => window.removeEventListener('popstate', handleUrlChange)
+  }, [])
 
   useEffect(() => {
     fetchLeaderboard()
@@ -381,243 +493,168 @@ export default function CommunityLeaderboard({ currentUserId, currentUsername, s
       setLeaderboard(data || [])
     } catch (err) {
       console.error('Error fetching leaderboard:', err)
-      setShareHint('Run the updated Supabase schema to enable clean opt-in leaderboard rows.')
       setLeaderboard([])
     } finally {
       setLoading(false)
     }
   }
 
-  const copyText = async (text) => {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.setAttribute('readonly', '')
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    const copied = document.execCommand('copy')
-    document.body.removeChild(textarea)
-    return copied
-  }
-
-  const handleCopyLink = async () => {
-    if (!profile?.claimed) {
-      setShareHint('Claim a profile first, then you can copy a public profile link.')
-      onOpenProfile?.()
-      return
-    }
-
-    if (!profile?.leaderboardOptIn) {
-      setShareHint('Turn on leaderboard visibility before copying a public profile link.')
-      onOpenProfile?.()
-      return
-    }
-
-    const url = new URL(window.location.origin + window.location.pathname)
-    url.searchParams.set('friend', currentUserId)
-    const shareUrl = url.toString()
-
-    setCopyState('syncing')
-    setShareHint('')
-
-    const syncResult = syncNow ? await syncNow() : { skipped: true }
-
-    try {
-      const copied = await copyText(shareUrl)
-      if (!copied) throw new Error('Clipboard copy failed')
-      setCopyState('copied')
-      setShareHint(syncResult?.ok
-        ? 'Latest stats synced before copying the profile link.'
-        : syncResult?.skipped
-          ? 'Profile link copied. Community sync is not configured.'
-          : 'Profile link copied. Stats sync will retry in the background.')
-    } catch (err) {
-      console.error('Failed to copy share link:', err)
-      setCopyState('manual')
-      setShareHint(`Copy manually: ${shareUrl}`)
-    }
-
-    setTimeout(() => {
-      setCopyState('idle')
-      setShareHint('')
-    }, 3600)
-  }
-
-  const handleSaveName = () => {
-    if (tempName.trim()) {
-      setUsername(tempName.trim())
-      localStorage.setItem('dsa-username', tempName.trim())
-    } else {
-      setTempName(currentUsername)
-    }
-    setIsEditingName(false)
-  }
+  const [communityTab, setCommunityTab] = useState('leaderboard') // 'leaderboard' | 'questions'
 
   // If viewing a friend's profile
   if (viewingFriend) {
     const isViewingMe = viewingFriend === currentUserId
     return (
       <div className="community-board">
-        <FriendProfile friendId={viewingFriend} localProfile={isViewingMe ? myProfileDetails : null} onBack={() => {
-          setViewingFriend(null)
-          // Clean URL
-          const url = new URL(window.location.href)
-          url.searchParams.delete('friend')
-          window.history.replaceState({}, '', url.toString())
-        }} />
+        <FriendProfile
+          friendId={viewingFriend}
+          localProfile={isViewingMe ? myProfileDetails : null}
+          solvedAtByProblem={isViewingMe ? solvedAtByProblem : null}
+          fetchRecentActivity={communityHub?.fetchRecentActivity}
+          onBack={() => {
+            setViewingFriend(null)
+            const url = new URL(window.location.href)
+            url.searchParams.delete('friend')
+            window.history.replaceState({}, '', url.toString())
+          }}
+        />
       </div>
     )
   }
 
   return (
     <div className="community-board">
-      <header className="community-hero">
-        <div className="hero-content">
-          <div className="eyebrow">
-            <Users size={16} /> Community
-          </div>
-          <h2>
-            Global<br />
-            Leaderboard
-          </h2>
-          <p>See how you stack up against other developers.</p>
-        </div>
-
-        <div className="user-card">
-          <div className="user-info">
-            <div className="user-avatar">
-              {profile?.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={`${currentUsername || 'Profile'} avatar`} />
-              ) : (
-                <span>{(currentUsername || 'P').charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <div className="user-details">
-              {isEditingName ? (
-                <div className="name-edit">
-                  <input
-                    autoFocus
-                    value={tempName}
-                    onChange={e => setTempName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSaveName()}
-                    onBlur={handleSaveName}
-                  />
-                </div>
-              ) : (
-                <div className="name-display" onClick={() => setIsEditingName(true)} title="Click to edit name">
-                  <strong>{currentUsername}</strong>
-                  <span className="edit-hint">Edit</span>
-                </div>
-              )}
-              <span className="user-id-hint">ID: {currentUserId.substring(0, 8)}...</span>
-            </div>
-          </div>
-          <div className="user-quick-stats">
-            <span>{stats?.totalSolved || 0} solved</span>
-            <span>{stats?.pct || 0}%</span>
-            <span>{stats?.bookmarkCount || 0} saved</span>
-          </div>
-          <button className="view-profile-btn" type="button" onClick={() => setViewingFriend(currentUserId)}>
-            <BarChart3 size={15} />
-            <span>View My Profile</span>
-          </button>
-          <button className="share-btn" onClick={handleCopyLink}>
-            {copyState === 'copied' ? <Check size={16} /> : <Share2 size={16} />}
-            <span>
-              {!profile?.claimed
-                ? 'Claim Profile First'
-                : !profile?.leaderboardOptIn
-                  ? 'Make Public First'
-                  : copyState === 'syncing'
-                ? 'Syncing Stats...'
-                : copyState === 'copied'
-                  ? 'Copied Link!'
-                  : copyState === 'manual'
-                    ? 'Copy Link Manually'
-                    : 'Copy Profile Link'}
-            </span>
-          </button>
-          {shareHint && <p className="share-hint">{shareHint}</p>}
-        </div>
-      </header>
-
-      <div className="leaderboard-table">
-        <div className="leaderboard-tabs" aria-label="Leaderboard sort">
-          {leaderboardModes.map(mode => (
-            <button
-              key={mode.key}
-              type="button"
-              className={leaderboardMode === mode.key ? 'is-active' : ''}
-              onClick={() => setLeaderboardMode(mode.key)}
-            >
-              {mode.label}
-            </button>
-          ))}
-        </div>
-        <div className="table-header">
-          <span className="col-rank">Rank</span>
-          <span className="col-user">Developer</span>
-          <span className="col-diff">Easy / Med / Hard</span>
-          <span className="col-momentum">Momentum</span>
-          <span className="col-score">{activeMode.scoreLabel}</span>
-        </div>
-
-        <div className="table-body">
-          {loading ? (
-            <div className="loading-state">Loading ranks...</div>
-          ) : (
-            leaderboard.map((user, idx) => {
-              const isMe = user.id === currentUserId
-              const diff = user.difficulty_breakdown || {}
-              const score = getLeaderboardScore(user, leaderboardMode)
-              return (
-                <div
-                  key={user.id}
-                  className={`leaderboard-row ${isMe ? 'is-me' : ''}`}
-                  onClick={() => setViewingFriend(user.id)}
-                  style={{ cursor: 'pointer' }}
-                  title={`View ${isMe ? 'your' : `${user.username}'s`} profile`}
-                >
-                  <span className="col-rank">
-                    {idx === 0 ? <Trophy size={16} className="gold" /> :
-                     idx === 1 ? <Trophy size={16} className="silver" /> :
-                     idx === 2 ? <Trophy size={16} className="bronze" /> :
-                     idx + 1}
-                  </span>
-                  <span className="col-user">
-                    <span className="row-avatar">
-                      {user.avatar_url ? (
-                        <img src={user.avatar_url} alt={`${user.username || 'Developer'} avatar`} />
-                      ) : (
-                        <span>{(user.username || 'D').charAt(0).toUpperCase()}</span>
-                      )}
-                    </span>
-                    <span className="row-name">{user.username}</span>
-                    {isMe && <span className="me-badge">You</span>}
-                  </span>
-                  <span className="col-diff">
-                    <span className="mini-diff easy-mini">{diff.easy || 0}</span>
-                    <span className="mini-diff med-mini">{diff.medium || 0}</span>
-                    <span className="mini-diff hard-mini">{diff.hard || 0}</span>
-                  </span>
-                  <span className="col-momentum">
-                    <span className="momentum-chip"><CalendarDays size={12} />{user.weekly_solved || 0}</span>
-                    <span className="momentum-chip"><BarChart3 size={12} />{user.monthly_solved || 0}</span>
-                    <span className="momentum-chip"><Flame size={12} />{user.current_streak || 0} days</span>
-                  </span>
-                  <span className="col-score">{leaderboardMode === 'streak' ? `${score} days` : score}</span>
-                </div>
-              )
-            })
+      {/* ── Main community tab bar ── */}
+      <div className="community-main-tabs">
+        <button
+          className={communityTab === 'leaderboard' ? 'is-active' : ''}
+          onClick={() => setCommunityTab('leaderboard')}
+        >
+          <Trophy size={15} />
+          Leaderboard
+        </button>
+        <button
+          className={communityTab === 'questions' ? 'is-active' : ''}
+          onClick={() => { setCommunityTab('questions'); communityHub?.markVisited?.() }}
+        >
+          <MessageSquare size={15} />
+          Questions Hub
+          {communityHub?.newQuestionCount > 0 && (
+            <span className="tab-badge">{communityHub.newQuestionCount}</span>
           )}
-        </div>
+        </button>
       </div>
+
+      {/* ── Leaderboard Tab ── */}
+      {communityTab === 'leaderboard' && (
+        <>
+          <header className="community-hero">
+            <div className="hero-content">
+              <div className="eyebrow">
+                <Users size={16} /> Community
+              </div>
+              <div className="hero-title-row">
+                <h2>Global Leaderboard</h2>
+                <p>See how you stack up against other developers.</p>
+              </div>
+            </div>
+          </header>
+
+          <div className="leaderboard-table">
+            <div className="leaderboard-tabs" aria-label="Leaderboard sort">
+              {leaderboardModes.map(mode => (
+                <button
+                  key={mode.key}
+                  type="button"
+                  className={leaderboardMode === mode.key ? 'is-active' : ''}
+                  onClick={() => setLeaderboardMode(mode.key)}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
+            <div className="table-header">
+              <span className="col-rank">Rank</span>
+              <span className="col-user">Developer</span>
+              <span className="col-diff">Easy / Med / Hard</span>
+              <span className="col-momentum">Momentum</span>
+              <span className="col-score">{activeMode.scoreLabel}</span>
+            </div>
+
+            <div className="table-body">
+              {loading ? (
+                <div className="loading-state">Loading ranks...</div>
+              ) : (
+                leaderboard.map((user, idx) => {
+                  const isMe = user.id === currentUserId
+                  const diff = user.difficulty_breakdown || {}
+                  const score = getLeaderboardScore(user, leaderboardMode)
+                  return (
+                    <div
+                      key={user.id}
+                      className={`leaderboard-row ${isMe ? 'is-me' : ''}`}
+                      onClick={() => setViewingFriend(user.id)}
+                      style={{ cursor: 'pointer' }}
+                      title={`View ${isMe ? 'your' : `${user.username}'s`} profile`}
+                    >
+                      <span className="col-rank">
+                        {idx === 0 ? <Trophy size={16} className="gold" /> :
+                         idx === 1 ? <Trophy size={16} className="silver" /> :
+                         idx === 2 ? <Trophy size={16} className="bronze" /> :
+                         idx + 1}
+                      </span>
+                      <span className="col-user">
+                        <span className="row-avatar">
+                          {user.avatar_url ? (
+                            <img src={user.avatar_url} alt={`${user.username || 'Developer'} avatar`} />
+                          ) : (
+                            <span>{(user.username || 'D').charAt(0).toUpperCase()}</span>
+                          )}
+                        </span>
+                        <span className="row-name">{user.username}</span>
+                        {isMe && <span className="me-badge">You</span>}
+                      </span>
+                      <span className="col-diff">
+                        <span className="mini-diff easy-mini">{diff.easy || 0}</span>
+                        <span className="mini-diff med-mini">{diff.medium || 0}</span>
+                        <span className="mini-diff hard-mini">{diff.hard || 0}</span>
+                      </span>
+                      <span className="col-momentum">
+                        <span className="momentum-chip"><CalendarDays size={12} />{user.weekly_solved || 0}</span>
+                        <span className="momentum-chip"><BarChart3 size={12} />{user.monthly_solved || 0}</span>
+                        <span className="momentum-chip"><Flame size={12} />{user.current_streak || 0} days</span>
+                      </span>
+                      <span className="col-score">{leaderboardMode === 'streak' ? `${score} days` : score}</span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Questions Hub Tab ── */}
+      {communityTab === 'questions' && communityHub && (
+        <CommunityQuestionsHub
+          questions={communityHub.questions}
+          messages={communityHub.messages}
+          companies={communityHub.companies}
+          loading={communityHub.loading}
+          chatLoading={communityHub.chatLoading}
+          addingQuestion={communityHub.addingQuestion}
+          sendingMessage={communityHub.sendingMessage}
+          fetchingLeetcode={communityHub.fetchingLeetcode}
+          isChecked={communityHub.isChecked}
+          onAddQuestion={communityHub.addQuestion}
+          onToggleCheck={communityHub.toggleCheck}
+          onSendMessage={communityHub.sendMessage}
+          onFetchLeetcode={communityHub.fetchLeetcodeProblem}
+          isClaimed={profile?.claimed}
+          onOpenProfile={onOpenProfile}
+          userId={currentUserId}
+        />
+      )}
     </div>
   )
 }

@@ -1,9 +1,30 @@
-import { BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Sparkles, Sun, Trophy, UserRound, Users } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { BarChart3, BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Sun, Trophy, UserRound, Users, Share2, Check, X } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import './TopBar.css'
 
-export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCommunity, isCommunityView, profile, onOpenProfile }) {
+export default function TopBar({
+  stats, sidebarOpen, onToggleSidebar, onToggleCommunity, isCommunityView,
+  profile, onOpenProfile, newQuestionCount, onOpenSearch,
+  // New props for the stats dropdown
+  currentUsername, currentUserId, onViewMyProfile, onCopyProfileLink,
+  copyState, shareHint, isEditingName, setIsEditingName, tempName, setTempName, onSaveName,
+}) {
   const { theme, toggleTheme } = useTheme()
+  const [statsOpen, setStatsOpen] = useState(false)
+  const statsRef = useRef(null)
+
+  // Close on outside click
+  useEffect(() => {
+    if (!statsOpen) return
+    const handleClick = (e) => {
+      if (statsRef.current && !statsRef.current.contains(e.target)) {
+        setStatsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [statsOpen])
 
   return (
     <header className="topbar">
@@ -58,6 +79,14 @@ export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCo
         </div>
 
         <div className="topbar-actions">
+          <button 
+            className="icon-btn search-btn" 
+            onClick={onOpenSearch} 
+            aria-label="Search problems (Cmd/Ctrl + K)"
+            title="Search problems (Cmd/Ctrl + K)"
+          >
+            <Search size={17} />
+          </button>
           <button
             className={`icon-btn profile-btn ${profile?.claimed ? 'is-claimed' : ''}`}
             onClick={onOpenProfile}
@@ -70,13 +99,90 @@ export default function TopBar({ stats, sidebarOpen, onToggleSidebar, onToggleCo
               <UserRound size={17} />
             )}
           </button>
+
+          {/* Stats dropdown button */}
+          <div className="stats-dropdown-wrap" ref={statsRef}>
+            <button
+              className={`icon-btn stats-btn ${statsOpen ? 'is-active' : ''}`}
+              onClick={() => setStatsOpen(!statsOpen)}
+              aria-label="My stats"
+              title="My stats & profile link"
+            >
+              <BarChart3 size={17} />
+            </button>
+
+            {statsOpen && (
+              <div className="stats-dropdown">
+                <div className="stats-dropdown-header">
+                  <div className="stats-dropdown-avatar">
+                    {profile?.avatarUrl ? (
+                      <img src={profile.avatarUrl} alt={`${currentUsername || 'Profile'} avatar`} />
+                    ) : (
+                      <span>{(currentUsername || 'P').charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="stats-dropdown-info">
+                    {isEditingName ? (
+                      <div className="name-edit">
+                        <input
+                          autoFocus
+                          value={tempName}
+                          onChange={e => setTempName(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && onSaveName()}
+                          onBlur={onSaveName}
+                        />
+                      </div>
+                    ) : (
+                      <div className="name-display" onClick={() => setIsEditingName(true)} title="Click to edit name">
+                        <strong>{currentUsername}</strong>
+                      </div>
+                    )}
+                    <span className="stats-dropdown-id">ID: {currentUserId?.substring(0, 8)}...</span>
+                  </div>
+                  <button className="stats-dropdown-close" onClick={() => setStatsOpen(false)}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="stats-dropdown-quick">
+                  <span>{stats?.totalSolved || 0} solved</span>
+                  <span>{stats?.pct || 0}%</span>
+                  <span>{stats?.bookmarkCount || 0} saved</span>
+                </div>
+                <button className="view-profile-btn" type="button" onClick={() => { onViewMyProfile?.(); setStatsOpen(false) }}>
+                  <BarChart3 size={15} />
+                  <span>View My Profile</span>
+                </button>
+                <button className="share-btn" onClick={() => { onCopyProfileLink?.() }}>
+                  {copyState === 'copied' ? <Check size={16} /> : <Share2 size={16} />}
+                  <span>
+                    {!profile?.claimed
+                      ? 'Claim Profile First'
+                      : !profile?.leaderboardOptIn
+                        ? 'Make Public First'
+                        : copyState === 'syncing'
+                      ? 'Syncing Stats...'
+                      : copyState === 'copied'
+                        ? 'Copied Link!'
+                        : copyState === 'manual'
+                          ? 'Copy Link Manually'
+                          : 'Copy Profile Link'}
+                  </span>
+                </button>
+                {shareHint && <p className="share-hint">{shareHint}</p>}
+              </div>
+            )}
+          </div>
+
           <button 
-            className={`icon-btn ${isCommunityView ? 'is-active' : ''}`} 
+            className={`icon-btn community-btn ${isCommunityView ? 'is-active' : ''}`} 
             onClick={onToggleCommunity} 
             aria-label="Community Leaderboard"
             title="Community Leaderboard"
           >
             <Users size={17} />
+            {newQuestionCount > 0 && !isCommunityView && (
+              <span className="community-badge">{newQuestionCount > 9 ? '9+' : newQuestionCount}</span>
+            )}
           </button>
           <button className="icon-btn theme-btn" onClick={toggleTheme} aria-label="Toggle theme">
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}

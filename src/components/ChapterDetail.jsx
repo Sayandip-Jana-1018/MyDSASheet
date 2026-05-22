@@ -132,6 +132,7 @@ export default function ChapterDetail({
   onViewChange,
   onFilter,
   filteredProblems,
+  highlightedProblemId,
   isProblemChecked,
   toggleProblem,
   isTrackerChecked,
@@ -259,6 +260,7 @@ export default function ChapterDetail({
             <Section eyebrow="Practice" title={`${filteredProblems.length} visible problems`} icon={ListChecks}>
               <ProblemTable
                 problems={filteredProblems}
+                highlightedProblemId={highlightedProblemId}
                 isProblemChecked={isProblemChecked}
                 toggleProblem={toggleProblem}
                 isBookmarked={isBookmarked}

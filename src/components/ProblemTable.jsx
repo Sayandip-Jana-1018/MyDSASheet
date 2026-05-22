@@ -8,7 +8,7 @@ const difficultyClasses = {
   Hard: 'hard',
 }
 
-export default function ProblemTable({ problems, isProblemChecked, toggleProblem, isBookmarked, toggleBookmark, getNote, setNote }) {
+export default function ProblemTable({ problems, highlightedProblemId, isProblemChecked, toggleProblem, isBookmarked, toggleBookmark, getNote, setNote }) {
   const [expandedNote, setExpandedNote] = useState(null)
   const [interactionError, setInteractionError] = useState('')
 
@@ -63,9 +63,10 @@ export default function ProblemTable({ problems, isProblemChecked, toggleProblem
           const noteText = getNote ? getNote(problem.id) : ''
           const hasNote = noteText.length > 0
           const isNoteOpen = expandedNote === problem.id
+          const isHighlighted = highlightedProblemId === problem.id
 
           return (
-            <div key={problem.id} className={`problem-item ${isNoteOpen ? 'has-open-note' : ''}`}>
+            <div key={problem.id} id={`problem-${problem.id}`} className={`problem-item ${isNoteOpen ? 'has-open-note' : ''} ${isHighlighted ? 'is-highlighted' : ''}`}>
               <div
                 className={`problem-row ${checked ? 'is-solved' : ''} ${bookmarked ? 'is-bookmarked' : ''}`}
               >

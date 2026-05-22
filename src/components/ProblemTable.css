@@ -487,3 +487,26 @@ html[data-theme="dark"] .note-bubble-input {
     min-height: 126px;
   }
 }
+
+/* --- Highlight Animation --- */
+@keyframes highlightPulse {
+  0% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+  15% {
+    background-color: rgba(49, 92, 246, 0.15);
+    box-shadow: 0 0 0 2px rgba(49, 92, 246, 0.5), inset 0 0 20px rgba(49, 92, 246, 0.2);
+    border-radius: 8px;
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.problem-item.is-highlighted .problem-row {
+  animation: highlightPulse 3s ease-out;
+  position: relative;
+  z-index: 10;
+}
