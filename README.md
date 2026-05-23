@@ -51,6 +51,18 @@ A premium, highly interactive Data Structures and Algorithms (DSA) learning and 
 - Also **deletes your Supabase profile** so shared links reflect accurate data
 - Generates a fresh identity (new UUID + random name)
 
+### 🌍 Community Questions Hub
+- **Interview Questions Feed**: Explore a global feed of real interview questions added by the community.
+- **2-Column Layout**: Clean, responsive grid layout for browsing questions.
+- **Sidebar Integration**: Access community questions directly from the sidebar as a "pseudo-chapter" to track your progress independently from the main curriculum.
+- **Add Questions**: Share your own interview experiences. Paste a LeetCode URL, and the app automatically fetches the title and difficulty via a Supabase Edge Function!
+- **Company & Drive Tags**: Tag questions with the company name and hiring drive (e.g., "OA", "Interview").
+- **Delete Functionality**: You can delete questions you've added. (Requires specific Supabase RLS policies, see below).
+
+### 💬 Community Discussion
+- Real-time global chat in the Community Hub.
+- Share tips, ask for help, or discuss recent interview trends with other developers.
+
 ### 🌓 Theme & Responsiveness
 - Seamless Light and Dark mode with glassmorphic UI elements
 - Fully responsive — custom layouts for desktop, tablet, and mobile
@@ -62,11 +74,11 @@ A premium, highly interactive Data Structures and Algorithms (DSA) learning and 
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18 (Hooks, Functional Components) |
+| Frontend | React 18 (Hooks, Functional Components, Framer Motion) |
 | Tooling | Vite (ultra-fast HMR + optimized builds) |
 | Styling | Vanilla CSS with CSS Variables, Grid, Flexbox, backdrop-filters |
-| State | Custom Hook (`useProgress.js`) with localStorage persistence |
-| Backend | Supabase (PostgreSQL + REST API for community features) |
+| State | Custom Hook (`useProgress.js`, `useCommunityQuestions.js`) with localStorage persistence |
+| Backend | Supabase (PostgreSQL, REST API, Edge Functions for LeetCode scraping) |
 | Icons | Lucide React |
 
 ---
@@ -99,6 +111,7 @@ A premium, highly interactive Data Structures and Algorithms (DSA) learning and 
 
 4. **Set up the database:**
    Run the contents of `schema.sql` in your Supabase SQL Editor. This creates the `community_profiles` table with all required columns and RLS policies.
+   *(Note: For the full community experience, ensure you also create the tables mentioned in the Database Schema section).*
 
 5. **Start the development server:**
    ```bash
@@ -112,7 +125,8 @@ A premium, highly interactive Data Structures and Algorithms (DSA) learning and 
 
 ## 📦 Database Schema
 
-The `community_profiles` table stores public progress for the leaderboard:
+### `community_profiles`
+Stores public progress for the leaderboard:
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -125,6 +139,57 @@ The `community_profiles` table stores public progress for the leaderboard:
 | `bookmarked_problems` | jsonb | Array of bookmarked problem IDs |
 | `tracker_progress` | jsonb | Milestone completion map |
 | `last_active` | timestamptz | Last activity timestamp |
+
+### `community_questions`
+Stores user-contributed interview questions:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key |
+| `added_by` | uuid | Foreign key to `community_profiles.id` |
+| `company_name` | text | Name of the company |
+| `drive_name` | text | Name of the drive (e.g., OA, Interview) |
+| `leetcode_number` | text | LeetCode problem number |
+| `leetcode_title` | text | LeetCode problem title |
+| `leetcode_url` | text | URL to the problem |
+| `leetcode_difficulty`| text | Easy, Medium, or Hard |
+| `description` | text | User's experience or tips |
+| `created_at` | timestamptz| Timestamp of creation |
+
+### `community_question_checks`
+Tracks which users have solved which community questions:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid | Primary key |
+| `user_id` | uuid | Foreign key to `community_profiles.id` |
+| `question_id` | uuid | Foreign key to `community_questions.id` |
+| `checked_at` | timestamptz| Timestamp of completion |
+
+---
+
+## 🔐 Supabase Configuration Notes
+
+### Deleting Questions (RLS Policies)
+The app allows users to delete the questions they've added. If you have **Row Level Security (RLS)** enabled on your Supabase tables, you must create policies to allow this.
+
+Run this in your Supabase SQL Editor so users can delete their own questions:
+```sql
+-- Allow users to delete their own questions
+CREATE POLICY "Users can delete their own questions" 
+ON public.community_questions 
+FOR DELETE 
+USING (added_by = auth.uid() OR added_by::text = current_setting('request.jwt.claims', true)::json->>'sub');
+-- Note: Depending on your exact auth setup (since the app uses custom client-side UUIDs), 
+-- you may need to adjust the USING clause to match your specific user identification method.
+
+-- Allow related checks to be deleted
+CREATE POLICY "Users can delete checks for their questions" 
+ON public.community_question_checks 
+FOR DELETE 
+USING (true); 
+```
+*Alternatively, if RLS is disabled for these tables, the client-side delete function will work automatically without additional configuration, though enabling RLS is highly recommended for production.*
 
 ---
 

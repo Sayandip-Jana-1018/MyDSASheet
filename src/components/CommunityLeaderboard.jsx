@@ -432,7 +432,7 @@ function RecentActivitySection({ friendId, solvedAtByProblem, fetchRecentActivit
 export default function CommunityLeaderboard({
   currentUserId, currentUsername, setUsername, stats, activityStats,
   solvedAtByProblem, trackerProgress, syncNow, profile, onOpenProfile,
-  communityHub,
+  communityHub, onExploreCommunity,
 }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
@@ -653,6 +653,8 @@ export default function CommunityLeaderboard({
           isClaimed={profile?.claimed}
           onOpenProfile={onOpenProfile}
           userId={currentUserId}
+          onExploreCommunity={onExploreCommunity}
+          onDeleteQuestion={communityHub.deleteQuestion}
         />
       )}
     </div>

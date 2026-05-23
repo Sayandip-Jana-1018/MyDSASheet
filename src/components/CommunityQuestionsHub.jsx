@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Search, Send, Check, ExternalLink, Building2,
   Briefcase, ChevronDown, ChevronUp, FileText,
-  Loader2, MessageCircle, X, Filter, Sparkles, Hash
+  Loader2, MessageCircle, X, Filter, Sparkles, Trash2, ArrowRight
 } from 'lucide-react'
 import LeetCodeIcon from './LeetCodeIcon'
 import { timeAgo, getDisplayTitle, getDisplayUrl, getDisplayDifficulty } from '../hooks/useCommunityQuestions'
@@ -289,11 +289,23 @@ function AddQuestionPanel({
   )
 }
 
-function QuestionCard({ question }) {
+function QuestionCard({ question, userId, onDelete }) {
   const title = getDisplayTitle(question)
   const url = getDisplayUrl(question)
   const diff = getDisplayDifficulty(question)
   const author = question.author
+  const isAuthor = userId && question.added_by === userId
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async (e) => {
+    e.stopPropagation()
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return
+    setDeleting(true)
+    const result = await onDelete?.(question.id)
+    if (!result?.ok) {
+      setDeleting(false)
+    }
+  }
 
   return (
     <motion.div
@@ -301,6 +313,7 @@ function QuestionCard({ question }) {
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
     >
       <div className="q-content">
@@ -333,7 +346,7 @@ function QuestionCard({ question }) {
           )}
           {question.leetcode_number && (
             <span className="q-tag lc-tag">
-              <Hash size={10} />
+              <LeetCodeIcon size={10} />
               LC {question.leetcode_number}
             </span>
           )}
@@ -352,7 +365,21 @@ function QuestionCard({ question }) {
             )}
             Contributed by <strong>{author?.username || 'Anonymous'}</strong>
           </span>
-          <span className="q-time">{timeAgo(question.created_at)}</span>
+          <div className="q-footer-right">
+            <span className="q-time">{timeAgo(question.created_at)}</span>
+            {isAuthor && onDelete && (
+              <button
+                type="button"
+                className="q-delete-btn"
+                onClick={handleDelete}
+                disabled={deleting}
+                title="Delete this question"
+                aria-label="Delete question"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -464,6 +491,8 @@ export default function CommunityQuestionsHub({
   isClaimed,
   onOpenProfile,
   userId,
+  onExploreCommunity,
+  onDeleteQuestion,
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterDifficulty, setFilterDifficulty] = useState('')
@@ -522,7 +551,7 @@ export default function CommunityQuestionsHub({
 
 
 
-          {/* Question cards */}
+          {/* Question cards — 2-column grid, limited to 10 */}
           <div className="questions-list">
             {loading ? (
               <div className="feed-empty">
@@ -535,14 +564,38 @@ export default function CommunityQuestionsHub({
                 <p>No matching questions.</p>
               </div>
             ) : (
-              filteredQuestions.map(q => (
+              filteredQuestions.slice(0, 10).map(q => (
                 <QuestionCard
                   key={q.id}
                   question={q}
+                  userId={userId}
+                  onDelete={onDeleteQuestion}
                 />
               ))
             )}
           </div>
+
+          {/* Explore more button */}
+          {filteredQuestions.length > 10 && onExploreCommunity && (
+            <button
+              type="button"
+              className="explore-more-btn"
+              onClick={onExploreCommunity}
+            >
+              Explore all {questions.length} questions in Community
+              <ArrowRight size={16} />
+            </button>
+          )}
+          {filteredQuestions.length > 0 && filteredQuestions.length <= 10 && onExploreCommunity && (
+            <button
+              type="button"
+              className="explore-more-btn explore-more-subtle"
+              onClick={onExploreCommunity}
+            >
+              Open Community Questions chapter
+              <ArrowRight size={16} />
+            </button>
+          )}
         </div>
 
         {/* Chat feed - right column */}

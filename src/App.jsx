@@ -476,6 +476,12 @@ export default function App() {
                 setProfileModalOpen(true)
               }}
               communityHub={communityHub}
+              onExploreCommunity={() => {
+                setShowCommunity(false)
+                setActiveChapter(COMMUNITY_CHAPTER_ID)
+                setActiveView('problems')
+                resetWorkspaceScroll()
+              }}
             />
           ) : activeData ? (
             <ErrorBoundary

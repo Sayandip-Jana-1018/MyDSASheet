@@ -202,6 +202,51 @@ export function useCommunityQuestions(userId, profile) {
     }
   }, [userId, profile?.claimed, fetchCompanies])
 
+  // Delete a question (only by author)
+  const deleteQuestion = useCallback(async (questionId) => {
+    if (!supabase || !userId) {
+      return { ok: false, error: new Error('Not authenticated.') }
+    }
+    try {
+      // First verify the user is the author
+      const { data: question, error: fetchError } = await supabase
+        .from('community_questions')
+        .select('added_by')
+        .eq('id', questionId)
+        .single()
+
+      if (fetchError) throw fetchError
+      if (question.added_by !== userId) {
+        return { ok: false, error: new Error('You can only delete your own questions.') }
+      }
+
+      // Delete related checks first
+      await supabase
+        .from('community_question_checks')
+        .delete()
+        .eq('question_id', questionId)
+
+      // Delete the question
+      const { error } = await supabase
+        .from('community_questions')
+        .delete()
+        .eq('id', questionId)
+        .eq('added_by', userId)
+
+      if (error) throw error
+      setQuestions(prev => prev.filter(q => q.id !== questionId))
+      setChecks(prev => {
+        const next = { ...prev }
+        delete next[questionId]
+        return next
+      })
+      return { ok: true }
+    } catch (err) {
+      console.error('Failed to delete question:', err)
+      return { ok: false, error: err }
+    }
+  }, [userId])
+
   // Toggle check on a question
   const toggleCheck = useCallback(async (questionId) => {
     if (!supabase || !userId || !profile?.claimed) {
@@ -354,6 +399,7 @@ export function useCommunityQuestions(userId, profile) {
     checkedCount,
     isChecked,
     addQuestion,
+    deleteQuestion,
     toggleCheck,
     sendMessage,
     fetchLeetcodeProblem,
