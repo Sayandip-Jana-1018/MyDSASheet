@@ -521,20 +521,6 @@ export default function CommunityQuestionsHub({
 
   return (
     <div className="questions-hub">
-      {/* Header */}
-      <div className="hub-header">
-        <div className="hub-header-text">
-          <div className="eyebrow">
-            <Sparkles size={14} />
-            Community Driven
-          </div>
-          <div className="hub-title-row">
-            <h2>Interview Questions</h2>
-            <span className="hub-count">{questions.length} questions from the community</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main content: Add + Questions left, Chat right */}
       <div className="hub-content">
         <div className="hub-left">
