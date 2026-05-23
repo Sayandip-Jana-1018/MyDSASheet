@@ -9,6 +9,7 @@ import FilterBar from './components/FilterBar'
 import ChapterSidebar from './components/ChapterSidebar'
 import ChapterDetail from './components/ChapterDetail'
 import CommunityLeaderboard from './components/CommunityLeaderboard'
+import CommunityQuestionsHub from './components/CommunityQuestionsHub'
 import ProfileSyncModal from './components/ProfileSyncModal'
 import GlobalSearchModal from './components/GlobalSearchModal'
 
@@ -51,7 +52,7 @@ export default function App() {
     return window.innerWidth > 860
   })
   const [activeView, setActiveView] = useState('overview')
-  const [showCommunity, setShowCommunity] = useState(false)
+  const [globalView, setGlobalView] = useState('curriculum') // 'curriculum' | 'leaderboard' | 'questions'
   const [profileModalOpen, setProfileModalOpen] = useState(false)
   const [profileModalMode, setProfileModalMode] = useState('welcome')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -183,11 +184,10 @@ export default function App() {
     }, 100); // small delay to let react render view
   };
 
-  // Check if a friend's link was shared
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.has('friend')) {
-      setShowCommunity(true)
+      setGlobalView('leaderboard')
     }
     const syncCode = params.get('sync')
     if (syncCode) {
@@ -309,7 +309,7 @@ export default function App() {
   const handleChapterSelect = chapterId => {
     setActiveChapter(chapterId)
     setActiveView('overview')
-    setShowCommunity(false)
+    setGlobalView('curriculum')
     resetWorkspaceScroll()
 
     if (window.innerWidth <= 860) {
@@ -365,12 +365,19 @@ export default function App() {
           setProfileModalMode(profile.claimed ? 'manage' : 'welcome')
           setProfileModalOpen(true)
         }}
-        onToggleCommunity={() => {
-          setShowCommunity(!showCommunity)
-          if (!showCommunity) communityHub.markVisited()
-          resetWorkspaceScroll()
+        onToggleLeaderboard={() => {
+          if (globalView === 'leaderboard') setGlobalView('curriculum')
+          else { setGlobalView('leaderboard'); resetWorkspaceScroll() }
         }}
-        isCommunityView={showCommunity}
+        onToggleQuestions={() => {
+          if (globalView === 'questions') setGlobalView('curriculum')
+          else {
+            setGlobalView('questions')
+            communityHub.markVisited()
+            resetWorkspaceScroll()
+          }
+        }}
+        globalView={globalView}
         newQuestionCount={communityHub.newQuestionCount}
         onOpenSearch={() => setIsSearchOpen(true)}
         currentUsername={username}
@@ -379,7 +386,7 @@ export default function App() {
           const url = new URL(window.location.href)
           url.searchParams.set('friend', userId)
           window.history.pushState({}, '', url.toString())
-          setShowCommunity(true)
+          setGlobalView('leaderboard')
           window.dispatchEvent(new Event('popstate'))
         }}
         onCopyProfileLink={handleCopyProfileLink}
@@ -460,7 +467,7 @@ export default function App() {
         {sidebarOpen && <button className="drawer-scrim" aria-label="Close chapters" onClick={() => setSidebarOpen(false)} />}
 
         <main className="workspace">
-          {showCommunity ? (
+          {globalView === 'leaderboard' ? (
             <CommunityLeaderboard
               currentUserId={userId}
               currentUsername={username}
@@ -476,13 +483,49 @@ export default function App() {
                 setProfileModalOpen(true)
               }}
               communityHub={communityHub}
-              onExploreCommunity={() => {
-                setShowCommunity(false)
-                setActiveChapter(COMMUNITY_CHAPTER_ID)
-                setActiveView('problems')
-                resetWorkspaceScroll()
-              }}
             />
+          ) : globalView === 'questions' ? (
+            <div className="community-board">
+              <header className="community-hero">
+                <div className="hero-content">
+                  <div className="eyebrow">
+                    <MessageSquare size={16} /> Community Driven
+                  </div>
+                  <div className="hero-title-row">
+                    <h2>Interview Questions</h2>
+                    <p>{communityHub.questions.length} questions from the community</p>
+                  </div>
+                </div>
+              </header>
+              <CommunityQuestionsHub
+                questions={communityHub.questions}
+                messages={communityHub.messages}
+                companies={communityHub.companies}
+                loading={communityHub.loading}
+                chatLoading={communityHub.chatLoading}
+                addingQuestion={communityHub.addingQuestion}
+                sendingMessage={communityHub.sendingMessage}
+                fetchingLeetcode={communityHub.fetchingLeetcode}
+                isChecked={communityHub.isChecked}
+                onAddQuestion={communityHub.addQuestion}
+                onDeleteQuestion={communityHub.deleteQuestion}
+                onToggleCheck={communityHub.toggleCheck}
+                onSendMessage={communityHub.sendMessage}
+                onFetchLeetcode={communityHub.fetchLeetcodeProblem}
+                isClaimed={profile?.claimed}
+                onOpenProfile={() => {
+                  setProfileModalMode(profile.claimed ? 'manage' : 'welcome')
+                  setProfileModalOpen(true)
+                }}
+                userId={userId}
+                onExploreCommunity={() => {
+                  setGlobalView('curriculum')
+                  setActiveChapter(COMMUNITY_CHAPTER_ID)
+                  setActiveView('problems')
+                  resetWorkspaceScroll()
+                }}
+              />
+            </div>
           ) : activeData ? (
             <ErrorBoundary
               resetKey={`${activeData.id}-${activeView}-${filter}-${search}`}

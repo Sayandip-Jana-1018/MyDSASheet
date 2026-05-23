@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { BarChart3, BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Sun, Trophy, UserRound, Users, Share2, Check, X } from 'lucide-react'
+import { BarChart3, BookOpenCheck, Layers3, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Sun, Trophy, UserRound, Users, Share2, Check, X, MessageSquare } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import './TopBar.css'
 
 export default function TopBar({
-  stats, sidebarOpen, onToggleSidebar, onToggleCommunity, isCommunityView,
+  stats, sidebarOpen, onToggleSidebar,
+  globalView, onToggleLeaderboard, onToggleQuestions,
   profile, onOpenProfile, newQuestionCount, onOpenSearch,
   // New props for the stats dropdown
   currentUsername, currentUserId, onViewMyProfile, onCopyProfileLink,
@@ -174,13 +175,21 @@ export default function TopBar({
           </div>
 
           <button 
-            className={`icon-btn community-btn ${isCommunityView ? 'is-active' : ''}`} 
-            onClick={onToggleCommunity} 
-            aria-label="Community Leaderboard"
-            title="Community Leaderboard"
+            className={`icon-btn community-btn ${globalView === 'leaderboard' ? 'is-active' : ''}`} 
+            onClick={onToggleLeaderboard} 
+            aria-label="Global Leaderboard"
+            title="Global Leaderboard"
           >
-            <Users size={17} />
-            {newQuestionCount > 0 && !isCommunityView && (
+            <Trophy size={17} />
+          </button>
+          <button 
+            className={`icon-btn community-btn ${globalView === 'questions' ? 'is-active' : ''}`} 
+            onClick={onToggleQuestions} 
+            aria-label="Interview Questions Hub"
+            title="Interview Questions Hub"
+          >
+            <MessageSquare size={17} />
+            {newQuestionCount > 0 && globalView !== 'questions' && (
               <span className="community-badge">{newQuestionCount > 9 ? '9+' : newQuestionCount}</span>
             )}
           </button>

@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Trophy, Users, BarChart3, BookOpen, Target, ArrowLeft, Flame, CalendarDays, TrendingUp, MessageSquare, ExternalLink, Clock } from 'lucide-react'
+import { Trophy, CalendarDays, Flame, BarChart3, Users, ChevronLeft, ArrowRight, BookOpen, Target, ArrowLeft, TrendingUp, ExternalLink, Clock } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { buildActivityStats } from '../lib/activity'
 import { chapters } from '../data/chapters'
-import CommunityQuestionsHub from './CommunityQuestionsHub'
+// Remove CommunityQuestionsHub import
 import { timeAgo, getDisplayTitle, getDisplayUrl, getDisplayDifficulty } from '../hooks/useCommunityQuestions'
 import './CommunityLeaderboard.css'
 
@@ -432,7 +432,6 @@ function RecentActivitySection({ friendId, solvedAtByProblem, fetchRecentActivit
 export default function CommunityLeaderboard({
   currentUserId, currentUsername, setUsername, stats, activityStats,
   solvedAtByProblem, trackerProgress, syncNow, profile, onOpenProfile,
-  communityHub, onExploreCommunity,
 }) {
   const [leaderboard, setLeaderboard] = useState([])
   const [loading, setLoading] = useState(true)
@@ -499,8 +498,6 @@ export default function CommunityLeaderboard({
     }
   }
 
-  const [communityTab, setCommunityTab] = useState('leaderboard') // 'leaderboard' | 'questions'
-
   // If viewing a friend's profile
   if (viewingFriend) {
     const isViewingMe = viewingFriend === currentUserId
@@ -510,7 +507,6 @@ export default function CommunityLeaderboard({
           friendId={viewingFriend}
           localProfile={isViewingMe ? myProfileDetails : null}
           solvedAtByProblem={isViewingMe ? solvedAtByProblem : null}
-          fetchRecentActivity={communityHub?.fetchRecentActivity}
           onBack={() => {
             setViewingFriend(null)
             const url = new URL(window.location.href)
@@ -524,30 +520,7 @@ export default function CommunityLeaderboard({
 
   return (
     <div className="community-board">
-      {/* ── Main community tab bar ── */}
-      <div className="community-main-tabs">
-        <button
-          className={communityTab === 'leaderboard' ? 'is-active' : ''}
-          onClick={() => setCommunityTab('leaderboard')}
-        >
-          <Trophy size={15} />
-          Leaderboard
-        </button>
-        <button
-          className={communityTab === 'questions' ? 'is-active' : ''}
-          onClick={() => { setCommunityTab('questions'); communityHub?.markVisited?.() }}
-        >
-          <MessageSquare size={15} />
-          Questions Hub
-          {communityHub?.newQuestionCount > 0 && (
-            <span className="tab-badge">{communityHub.newQuestionCount}</span>
-          )}
-        </button>
-      </div>
-
       {/* ── Leaderboard Tab ── */}
-      {communityTab === 'leaderboard' && (
-        <>
           <header className="community-hero">
             <div className="hero-content">
               <div className="eyebrow">
@@ -631,32 +604,6 @@ export default function CommunityLeaderboard({
               )}
             </div>
           </div>
-        </>
-      )}
-
-      {/* ── Questions Hub Tab ── */}
-      {communityTab === 'questions' && communityHub && (
-        <CommunityQuestionsHub
-          questions={communityHub.questions}
-          messages={communityHub.messages}
-          companies={communityHub.companies}
-          loading={communityHub.loading}
-          chatLoading={communityHub.chatLoading}
-          addingQuestion={communityHub.addingQuestion}
-          sendingMessage={communityHub.sendingMessage}
-          fetchingLeetcode={communityHub.fetchingLeetcode}
-          isChecked={communityHub.isChecked}
-          onAddQuestion={communityHub.addQuestion}
-          onToggleCheck={communityHub.toggleCheck}
-          onSendMessage={communityHub.sendMessage}
-          onFetchLeetcode={communityHub.fetchLeetcodeProblem}
-          isClaimed={profile?.claimed}
-          onOpenProfile={onOpenProfile}
-          userId={currentUserId}
-          onExploreCommunity={onExploreCommunity}
-          onDeleteQuestion={communityHub.deleteQuestion}
-        />
-      )}
     </div>
   )
 }
