@@ -1278,13 +1278,14 @@ a.recent-title:hover {
   }
 
   .table-header {
-    padding: 0 8px;
+    padding: 10px 8px;
     font-size: 9px;
+    gap: 8px;
   }
 
   .col-rank {
-    width: 36px;
-    min-width: 36px;
+    width: 44px;
+    min-width: 44px;
   }
 
   .col-score {
