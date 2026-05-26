@@ -176,6 +176,8 @@ html[data-theme="dark"] .app {
     radial-gradient(180px 80px at 95% 0%, color-mix(in srgb, var(--chapter-color) 8%, transparent), transparent 60%),
     var(--bg-subtle);
   overflow: hidden;
+  flex-shrink: 0;
+  min-height: 36px;
 }
 
 .cs-btn {
