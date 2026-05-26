@@ -114,7 +114,12 @@ export default function ProblemTable({ problems, highlightedProblemId, isProblem
                   {problem.difficulty}
                 </span>
 
-                <span className="pattern-label">{problem.pattern}</span>
+                <div className="pattern-cell">
+                  <span className="pattern-label">{problem.pattern}</span>
+                  {problem.company && (
+                    <span className="company-label">{problem.company}</span>
+                  )}
+                </div>
               </div>
 
               {isNoteOpen && (
