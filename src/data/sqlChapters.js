@@ -493,12 +493,12 @@ export const sqlChapters = [
       },
       {
         "id": "sql-window-3",
-        "name": "Median Employee Salary",
+        "name": "Weather Observation Station 20 (Median)",
         "difficulty": "Hard",
-        "pattern": "ROW_NUMBER + COUNT",
-        "url": "https://leetcode.com/problems/median-employee-salary/",
+        "pattern": "ROW_NUMBER + Median",
+        "url": "https://www.hackerrank.com/challenges/weather-observation-station-20/problem",
         "company": "Google",
-        "hint": "Assign ROW_NUMBER per company, find middle position(s) using COUNT"
+        "hint": "Assign ROW_NUMBER, find middle position(s) using COUNT, then average"
       },
       {
         "id": "sql-window-4",
@@ -511,21 +511,21 @@ export const sqlChapters = [
       },
       {
         "id": "sql-window-5",
-        "name": "Investments in 2016",
+        "name": "Highest-Grossing Items",
         "difficulty": "Medium",
-        "pattern": "Window + HAVING",
-        "url": "https://leetcode.com/problems/investments-in-2016/",
-        "company": "Expected in interviews",
-        "hint": "COUNT OVER(PARTITION BY tiv_2015) for duplicate check, unique (lat,lon) check"
+        "pattern": "Window + Top N",
+        "url": "https://datalemur.com/questions/sql-highest-grossing",
+        "company": "Amazon",
+        "hint": "RANK() OVER(PARTITION BY category ORDER BY spend DESC), filter rank <= 2"
       },
       {
         "id": "sql-window-6",
-        "name": "Find Cumulative Salary of an Employee",
-        "difficulty": "Hard",
-        "pattern": "Running Sum + LAG",
-        "url": "https://leetcode.com/problems/find-cumulative-salary-of-an-employee/",
-        "company": "Amazon",
-        "hint": "SUM(salary) OVER(PARTITION BY id ORDER BY month ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)"
+        "name": "Tweets' Rolling Averages",
+        "difficulty": "Medium",
+        "pattern": "Running Avg + Preceding",
+        "url": "https://datalemur.com/questions/rolling-average-tweets",
+        "company": "Twitter",
+        "hint": "AVG(tweet_count) OVER(PARTITION BY user_id ORDER BY tweet_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)"
       }
     ],
     "variations": [],
@@ -851,12 +851,12 @@ export const sqlChapters = [
       },
       {
         "id": "sql-biz-6",
-        "name": "Consecutive Available Seats",
+        "name": "Sending vs. Opening Snaps",
         "difficulty": "Medium",
-        "pattern": "Self-JOIN + ABS",
-        "url": "https://leetcode.com/problems/consecutive-available-seats/",
-        "company": "Expected in interviews",
-        "hint": "Self-join Cinema c1, c2 WHERE ABS(c1.seat_id - c2.seat_id) = 1 AND both free"
+        "pattern": "Conditional Aggregation",
+        "url": "https://datalemur.com/questions/time-spent-snaps",
+        "company": "Snapchat",
+        "hint": "SUM(CASE WHEN activity = 'open' THEN time ELSE 0 END) / total_time * 100"
       }
     ],
     "variations": [],
@@ -895,30 +895,30 @@ export const sqlChapters = [
       },
       {
         "id": "sql-faang-1",
-        "name": "Tournament Winners",
+        "name": "15 Days of Learning SQL",
         "difficulty": "Hard",
-        "pattern": "CTE + CASE + DENSE_RANK",
-        "url": "https://leetcode.com/problems/tournament-winners/",
-        "company": "Google",
-        "hint": "CTE to sum scores from both first_player and second_player, then RANK per group"
+        "pattern": "CTE + Window + Subquery",
+        "url": "https://www.hackerrank.com/challenges/15-days-of-learning-sql/problem",
+        "company": "IBM / FAANG",
+        "hint": "Need running count of unique days per hacker and the daily max submitter"
       },
       {
         "id": "sql-faang-2",
-        "name": "Biggest Window Between Visits",
+        "name": "Server Utilization Time",
         "difficulty": "Hard",
-        "pattern": "LEAD + DATEDIFF + MAX",
-        "url": "https://leetcode.com/problems/biggest-window-between-visits/",
+        "pattern": "LEAD + Date Diff + SUM",
+        "url": "https://datalemur.com/questions/total-server-utilization",
         "company": "Amazon",
-        "hint": "LEAD(visit_date) to get next visit, DATEDIFF for gap, MAX per user"
+        "hint": "Use LEAD/LAG to pair 'start' and 'stop' events, then sum the differences"
       },
       {
         "id": "sql-faang-3",
-        "name": "Report Contiguous Dates (Gaps & Islands)",
-        "difficulty": "Hard",
-        "pattern": "CTE + ROW_NUMBER difference",
-        "url": "https://leetcode.com/problems/report-contiguous-dates/",
-        "company": "Google / Microsoft",
-        "hint": "Assign ROW_NUMBER per state; date - ROW_NUMBER() groups consecutives"
+        "name": "Projects (Gaps & Islands)",
+        "difficulty": "Medium",
+        "pattern": "CTE + ROW_NUMBER logic",
+        "url": "https://www.hackerrank.com/challenges/projects/problem",
+        "company": "Google / Meta",
+        "hint": "End_Date - ROW_NUMBER() creates groups for consecutive days (Islands)"
       },
       {
         "id": "sql-faang-4",
