@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, X, ChevronRight } from 'lucide-react';
+import { Search, X, ChevronRight, Database } from 'lucide-react';
 import LeetCodeIcon from './LeetCodeIcon';
 import { chapters } from '../data/chapters';
+import { sqlChapters } from '../data/sqlChapters';
 import './GlobalSearchModal.css';
 
 export default function GlobalSearchModal({ isOpen, onClose, onSelectProblem }) {
@@ -13,16 +14,21 @@ export default function GlobalSearchModal({ isOpen, onClose, onSelectProblem }) 
   // Flatten all problems from all chapters
   const allProblems = useMemo(() => {
     const list = [];
-    chapters.forEach(chapter => {
-      (chapter.problems || []).forEach(problem => {
-        list.push({
-          ...problem,
-          chapterId: chapter.id,
-          chapterName: chapter.name,
-          chapterColor: chapter.color
+    const addChapters = (chapterList, curriculumLabel) => {
+      chapterList.forEach(chapter => {
+        (chapter.problems || []).forEach(problem => {
+          list.push({
+            ...problem,
+            chapterId: chapter.id,
+            chapterName: chapter.name,
+            chapterColor: chapter.color,
+            curriculum: curriculumLabel,
+          });
         });
       });
-    });
+    };
+    addChapters(chapters, 'DSA');
+    addChapters(sqlChapters, 'SQL');
     return list;
   }, []);
 
@@ -114,7 +120,7 @@ export default function GlobalSearchModal({ isOpen, onClose, onSelectProblem }) 
             <div className="global-search-empty">
               <p>Type to start searching...</p>
               <div className="search-tips">
-                <span>Try: "Two Sum" or "Sliding Window"</span>
+                <span>Try: "Two Sum", "Sliding Window", or "JOIN"</span>
               </div>
             </div>
           )}
@@ -135,7 +141,7 @@ export default function GlobalSearchModal({ isOpen, onClose, onSelectProblem }) 
                   onMouseEnter={() => setSelectedIndex(idx)}
                 >
                   <div className="result-icon" style={{ color: problem.chapterColor || 'var(--accent)' }}>
-                    <LeetCodeIcon size={16} />
+                    {problem.curriculum === 'SQL' ? <Database size={16} /> : <LeetCodeIcon size={16} />}
                   </div>
                   <div className="result-details">
                     <h4>{problem.name}</h4>

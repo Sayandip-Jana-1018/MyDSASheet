@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { chapters } from '../data/chapters'
+import { sqlChapters } from '../data/sqlChapters'
 import { supabase } from '../lib/supabase'
 import { buildActivityStats, normalizeSolvedAt } from '../lib/activity'
 
@@ -258,7 +259,9 @@ export function useProgress() {
       const chapterStats = {}
       const solvedIds = []
 
-      for (const ch of chapters) {
+      const allChapters = [...chapters, ...sqlChapters]
+
+      for (const ch of allChapters) {
         const chapterProblems = ch.problems || []
         let chDone = 0
         for (const p of chapterProblems) {
@@ -274,7 +277,7 @@ export function useProgress() {
         chapterStats[ch.id] = { done: chDone, total: chapterProblems.length }
       }
 
-      const totalProblems = chapters.reduce((s, c) => s + (c.problems || []).length, 0)
+      const totalProblems = allChapters.reduce((s, c) => s + (c.problems || []).length, 0)
       return {
         totalSolved,
         totalProblems,

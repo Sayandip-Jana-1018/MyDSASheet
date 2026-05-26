@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext'
 import './TopBar.css'
 
 export default function TopBar({
-  stats, sidebarOpen, onToggleSidebar,
+  stats, curriculum, sidebarOpen, onToggleSidebar,
   globalView, onToggleLeaderboard, onToggleQuestions,
   profile, onOpenProfile, newQuestionCount, onOpenSearch,
   // New props for the stats dropdown
@@ -40,7 +40,7 @@ export default function TopBar({
             <BookOpenCheck size={18} />
           </div>
           <div>
-            <p className="brand-kicker">Ready to Fly with DSA?</p>
+            <p className="brand-kicker">{curriculum === 'sql' ? 'Master SQL Queries!' : 'Ready to Fly with DSA?'}</p>
             <h1>Sayandip's Cockpit ❤︎</h1>
           </div>
         </div>

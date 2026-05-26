@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useRef, useState, useEffect } from 'react'
-import { ChevronDown, MessageSquare, Users } from 'lucide-react'
+import { ChevronDown, MessageSquare, Users, Database, Code2 } from 'lucide-react'
 import { chapters } from './data/chapters'
+import { sqlChapters } from './data/sqlChapters'
 import { useProgress } from './hooks/useProgress'
 import { useCommunityQuestions, getDisplayTitle, getDisplayUrl, getDisplayDifficulty } from './hooks/useCommunityQuestions'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -45,6 +46,8 @@ export default function App() {
 
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  const [curriculum, setCurriculum] = useState('dsa') // 'dsa' | 'sql'
+  const activeChapters = curriculum === 'sql' ? sqlChapters : chapters
   const [activeChapter, setActiveChapter] = useState(chapters[0]?.id || null)
   const chapterListRef = useRef(null)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -154,6 +157,15 @@ export default function App() {
 
   const handleSelectProblem = (problem) => {
     setIsSearchOpen(false);
+
+    // Switch curriculum if needed
+    if (problem.curriculum) {
+      const targetCurriculum = problem.curriculum.toLowerCase();
+      if (targetCurriculum !== curriculum) {
+        setCurriculum(targetCurriculum);
+      }
+    }
+
     handleChapterSelect(problem.chapterId);
     setFilter('all');
     setSearch('');
@@ -266,7 +278,18 @@ export default function App() {
 
   const activeData = isCommunityChapter
     ? communityChapterData
-    : (chapters.find(c => c.id === activeChapter) || chapters[0])
+    : (activeChapters.find(c => c.id === activeChapter) || activeChapters[0])
+
+  // Curriculum-specific stats for sidebar display
+  const curriculumStats = useMemo(() => {
+    let solved = 0, total = 0
+    for (const ch of activeChapters) {
+      const s = stats.chapterStats[ch.id] || { done: 0, total: (ch.problems || []).length }
+      solved += s.done
+      total += s.total
+    }
+    return { solved, total, pct: total ? Math.round(solved / total * 100) : 0 }
+  }, [activeChapters, stats.chapterStats])
 
   const communityChapterStats = useMemo(() => {
     const total = communityChapterData.problems.length
@@ -317,6 +340,17 @@ export default function App() {
     }
   }
 
+  const handleCurriculumSwitch = (next) => {
+    if (next === curriculum) return
+    setCurriculum(next)
+    const nextChapters = next === 'sql' ? sqlChapters : chapters
+    setActiveChapter(nextChapters[0]?.id || null)
+    setActiveView('overview')
+    setFilter('all')
+    setSearch('')
+    resetWorkspaceScroll()
+  }
+
   const handleViewChange = view => {
     if (views.includes(view)) setActiveView(view)
   }
@@ -358,6 +392,7 @@ export default function App() {
     <div className="app" style={{ '--chapter-color': activeData?.color || '#315cf6' }}>
       <TopBar
         stats={stats}
+        curriculum={curriculum}
         profile={profile}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen(open => !open)}
@@ -411,9 +446,28 @@ export default function App() {
             <div className="rail-head">
               <div>
                 <p className="eyebrow">Curriculum</p>
-                <h2>22 chapters</h2>
+                <h2>{activeChapters.length} chapters</h2>
               </div>
-              <span className="rail-count">{stats.totalSolved}/{stats.totalProblems}</span>
+              <span className="rail-count">{curriculumStats.solved}/{curriculumStats.total}</span>
+            </div>
+
+            {/* ── Curriculum Switcher ── */}
+            <div className="curriculum-switcher">
+              <button
+                className={`cs-btn ${curriculum === 'dsa' ? 'is-active' : ''}`}
+                onClick={() => handleCurriculumSwitch('dsa')}
+              >
+                <Code2 size={14} />
+                <span>DSA</span>
+              </button>
+              <button
+                className={`cs-btn ${curriculum === 'sql' ? 'is-active' : ''}`}
+                onClick={() => handleCurriculumSwitch('sql')}
+              >
+                <Database size={14} />
+                <span>SQL</span>
+              </button>
+              <div className={`cs-indicator ${curriculum === 'sql' ? 'is-right' : ''}`} />
             </div>
 
             <FilterBar
@@ -425,7 +479,7 @@ export default function App() {
             />
 
             <div className="chapter-list" aria-label="Chapters" ref={chapterListRef}>
-              {chapters.map(chapter => (
+              {activeChapters.map(chapter => (
                 <ChapterSidebar
                   key={chapter.id}
                   chapter={chapter}

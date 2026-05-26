@@ -236,20 +236,22 @@ export default function ChapterDetail({
               </div>
             </Section>
 
-            <Section eyebrow="Depth" title="Must-know variations" icon={Layers3}>
-              <div className="variation-grid">
-                {chapter.variations.map((variation, index) => (
-                  <article key={index} className="variation-item">
-                    <h3>{cleanText(variation.title)}</h3>
-                    <div>
-                      {variation.items.map((item, itemIndex) => (
-                        <span key={itemIndex}>{cleanText(item)}</span>
-                      ))}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </Section>
+            {chapter.variations && chapter.variations.length > 0 && (
+              <Section eyebrow="Depth" title="Must-know variations" icon={Layers3}>
+                <div className="variation-grid">
+                  {chapter.variations.map((variation, index) => (
+                    <article key={index} className="variation-item">
+                      <h3>{cleanText(variation.title)}</h3>
+                      <div>
+                        {variation.items.map((item, itemIndex) => (
+                          <span key={itemIndex}>{cleanText(item)}</span>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </Section>
+            )}
 
             <div className="mobile-activity">
               <ActivityPanel activityStats={activityStats} />
